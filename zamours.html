@@ -1,0 +1,4372 @@
+<title>Z'amours and Go — Pupitre</title>
+
+<style>
+  /* =========================================================
+     Z'AMOURS AND GO — habillage romance-comic / pop art
+     Papier journal crème · encre noire épaisse · trame Ben-Day
+     Rose bonbon · cyan d'imprimerie · jaune criard · cœurs
+     ========================================================= */
+
+  :root {
+    /* d'après le plateau : ciel clair, rouge glossy, jaune, bleu roi,
+       et le liseré blanc de détourage autour de chaque élément */
+    --ground:      #E9F3FD;   /* ciel de plateau */
+    --ground-2:    #D3E7FA;   /* bandeau plus soutenu */
+    --raised:      #FFFFFF;
+    --line:        #12100F;   /* trait noir des illustrations */
+    --ink:         #12100F;
+    --muted:       #4E6C88;
+    --rose:        #E5231F;   /* le rouge du cœur */
+    --rose-dim:    #A80F12;
+    --amber:       #1E56A0;   /* bleu roi (accent secondaire) */
+    --yellow:      #FFCE00;   /* le jaune du logo */
+    --match:       #FFCE00;
+    --miss:        #8FA7BC;
+
+    --display: Impact, Haettenschweiler, "Franklin Gothic Bold", "Arial Narrow Bold", sans-serif;
+    --heavy: "Arial Black", "Segoe UI Black", Impact, sans-serif;
+    --script: "Brush Script MT", "Segoe Script", "Bradley Hand", cursive;
+    --body: "Segoe UI", system-ui, -apple-system, sans-serif;
+    --data: Consolas, "SF Mono", ui-monospace, monospace;
+
+    --pad: clamp(16px, 2.2vw, 34px);
+    /* le détourage blanc + son ombre douce, comme les décors du plateau */
+    --cutout: 0 0 0 9px #fff, 0 12px 28px rgba(20,50,90,.22);
+    --cutout-sm: 0 0 0 5px #fff, 0 6px 16px rgba(20,50,90,.20);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+
+  body {
+    background: linear-gradient(#F8FCFF 0%, var(--ground) 45%, #D9EAF8 100%);
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Trame Ben-Day en dégradé : points minuscules en haut, de plus en plus
+     gros vers le bas jusqu'à saturer en aplat. Chaque bande est un calque
+     avec son propre rayon de point et son propre masque de fondu.
+     Le pas (--dot-grid) est commun à toutes : les points restent alignés. */
+  .halftone {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    --dot-grid: 15px;
+    --dot-col: 30, 86, 160;
+  }
+  .halftone i {
+    position: absolute;
+    inset: 0;
+    display: block;
+    background-size: var(--dot-grid) var(--dot-grid);
+  }
+  .halftone i:nth-child(1) {
+    background-image: radial-gradient(rgba(var(--dot-col), .16) 1.2px, transparent 1.3px);
+    -webkit-mask-image: linear-gradient(#000 0%, #000 16%, transparent 30%);
+            mask-image: linear-gradient(#000 0%, #000 16%, transparent 30%);
+  }
+  .halftone i:nth-child(2) {
+    background-image: radial-gradient(rgba(var(--dot-col), .17) 2.1px, transparent 2.2px);
+    -webkit-mask-image: linear-gradient(transparent 14%, #000 30%, transparent 46%);
+            mask-image: linear-gradient(transparent 14%, #000 30%, transparent 46%);
+  }
+  .halftone i:nth-child(3) {
+    background-image: radial-gradient(rgba(var(--dot-col), .18) 3.2px, transparent 3.3px);
+    -webkit-mask-image: linear-gradient(transparent 30%, #000 46%, transparent 62%);
+            mask-image: linear-gradient(transparent 30%, #000 46%, transparent 62%);
+  }
+  .halftone i:nth-child(4) {
+    background-image: radial-gradient(rgba(var(--dot-col), .19) 4.6px, transparent 4.7px);
+    -webkit-mask-image: linear-gradient(transparent 46%, #000 62%, transparent 76%);
+            mask-image: linear-gradient(transparent 46%, #000 62%, transparent 76%);
+  }
+  .halftone i:nth-child(5) {
+    background-image: radial-gradient(rgba(var(--dot-col), .20) 6.4px, transparent 6.5px);
+    -webkit-mask-image: linear-gradient(transparent 60%, #000 76%, transparent 90%);
+            mask-image: linear-gradient(transparent 60%, #000 76%, transparent 90%);
+  }
+  /* dernière bande : les points se touchent, la trame devient un aplat */
+  .halftone i:nth-child(6) {
+    background-image: radial-gradient(rgba(var(--dot-col), .21) 9.4px, transparent 9.5px);
+    -webkit-mask-image: linear-gradient(transparent 74%, #000 92%);
+            mask-image: linear-gradient(transparent 74%, #000 92%);
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  /* ---------- rails ---------- */
+
+  .rail {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px var(--pad);
+    background: var(--raised);
+    border-bottom: 4px solid var(--ink);
+  }
+
+  .rail.bottom {
+    border-bottom: 0;
+    border-top: 4px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(14px, 1.15vw, 19px);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .eyebrow strong { color: var(--rose-dim); font-weight: 400; }
+
+  .spacer { margin-left: auto; }
+
+  /* progression en cœurs */
+  .pips { display: flex; gap: 6px; align-items: center; }
+  .pip {
+    width: auto; height: auto;
+    background: none;
+    font-size: 17px;
+    line-height: 1;
+    color: rgba(20,9,15,.20);
+  }
+  .pip::before { content: "♥"; }
+  .pip.done { color: var(--rose); }
+  .pip.now {
+    color: var(--yellow);
+    font-size: 25px;
+    -webkit-text-stroke: 2px var(--ink);
+  }
+
+  /* ---------- stage ---------- */
+
+  .stage {
+    padding: clamp(12px, 2.2vh, 38px) var(--pad);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(10px, 1.6vh, 22px);
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .kicker {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: clamp(14px, 1.2vw, 20px);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* étiquette de régime : cartouche de bande dessinée, posé de travers */
+  .kicker .tag {
+    background: var(--yellow);
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    padding: 4px 12px;
+    font-size: .92em;
+    letter-spacing: .08em;
+    box-shadow: var(--cutout-sm);
+    transform: rotate(-1.6deg);
+  }
+
+  /* ---------- LA BULLE — élément signature ---------- */
+
+  .question {
+    font-family: var(--heavy);
+    font-weight: 400;
+    font-size: clamp(21px, min(3.2vw, 4.2vh), 54px);
+    line-height: 1.08;
+    text-wrap: balance;
+    margin: 0 0 30px;
+    max-width: 22ch;
+    background: var(--raised);
+    border: 4px solid var(--ink);
+    border-radius: 30px;
+    padding: clamp(16px, 2.2vh, 28px) clamp(20px, 2.4vw, 36px);
+    box-shadow: var(--cutout);
+    position: relative;
+  }
+
+  /* la queue de la bulle : triangle d'encre + triangle blanc par-dessus */
+  .question::before,
+  .question::after {
+    content: "";
+    position: absolute;
+    width: 0; height: 0;
+    border-style: solid;
+  }
+  .question::before {
+    left: 48px; bottom: -40px;
+    border-width: 42px 30px 0 0;
+    border-color: var(--ink) transparent transparent transparent;
+  }
+  .question::after {
+    left: 56px; bottom: -26px;
+    border-width: 28px 19px 0 0;
+    border-color: var(--raised) transparent transparent transparent;
+  }
+
+  .question.long  { font-size: clamp(19px, min(2.3vw, 3.2vh), 38px); max-width: 32ch; }
+  .question.xlong { font-size: clamp(15px, min(1.6vw, 2.3vh), 27px); max-width: 48ch; line-height: 1.2; }
+
+  /* QCM ouvert : la question a déjà été lue, elle cède la place aux options */
+  .question.compact {
+    font-size: clamp(18px, min(2.05vw, 3.2vh), 32px);
+    max-width: 38ch;
+    line-height: 1.16;
+    padding: 12px clamp(16px, 1.8vw, 26px);
+    margin-bottom: 26px;
+  }
+  .question.compact::before { bottom: -30px; border-width: 32px 23px 0 0; }
+  .question.compact::after  { left: 54px; bottom: -19px; border-width: 21px 15px 0 0; }
+  .question.compact + .options { gap: clamp(6px, .9vh, 10px); }
+  .question.compact + .options .option {
+    padding: clamp(7px, 1.1vh, 10px) 17px;
+    font-size: clamp(12px, min(1.05vw, 1.6vh), 17px);
+    line-height: 1.35;
+  }
+
+  /* le chrono se fait plus discret pendant la lecture des options */
+  .stage:has(.question.compact) {
+    gap: clamp(9px, 1.3vh, 17px);
+    padding-top: clamp(10px, 1.6vh, 26px);
+    padding-bottom: clamp(10px, 1.6vh, 26px);
+  }
+  .stage:has(.question.compact) .ring { width: 54px; height: 54px; }
+  .stage:has(.question.compact) .count { font-size: clamp(26px, min(2.6vw, 4vh), 42px); }
+  .stage:has(.question.compact) .timerwrap { gap: 14px; }
+  .stage:has(.question.compact) .ring { width: 46px; height: 46px; }
+  .stage:has(.question.compact) .subline { font-size: clamp(12px, min(1vw, 1.6vh), 17px); }
+  .stage:has(.question.compact) .question { margin-bottom: 22px; }
+  .stage:has(.question.compact) .question::before { bottom: -26px; border-width: 28px 20px 0 0; }
+  .stage:has(.question.compact) .question::after  { left: 52px; bottom: -16px; border-width: 18px 13px 0 0; }
+
+  /* le repère de cible, surligné comme le prénom dans la pastille */
+  .ph {
+    font-weight: 900;
+    background: linear-gradient(
+      transparent 56%, var(--yellow) 56%, var(--yellow) 94%, transparent 94%);
+    padding: 0 .1em;
+    white-space: nowrap;
+  }
+
+  /* bandeau des rôles : qui écrit, qui devine */
+  .roles {
+    display: inline-block;
+    font-size: clamp(12px, min(1.05vw, 1.7vh), 18px);
+    line-height: 1.3;
+    color: var(--ink);
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: var(--cutout-sm);
+    padding: clamp(4px, .7vh, 8px) clamp(12px, 1.3vw, 20px);
+    max-width: 96ch;
+  }
+  .roles b { color: var(--rose-dim); }
+  .roles .ph { font-weight: 700; }
+  .roles.qcm { background: var(--yellow); }
+  .roles.fini { background: var(--yellow); border-color: var(--ink); }
+  .roles.qcm b { color: var(--ink); }
+
+  .subline {
+    font-size: clamp(15px, 1.25vw, 21px);
+    color: var(--muted);
+    max-width: 62ch;
+    line-height: 1.5;
+  }
+
+  .subline em { color: var(--ink); font-style: normal; font-weight: 700; }
+
+  /* ---------- révélation d'une question ---------- */
+
+  .question .qtxt { display: block; }
+
+  /* la bulle arrive… */
+  .question.reveal { animation: qPop .42s var(--qdelay, 0ms) cubic-bezier(.16,1.18,.3,1) both; }
+
+  @keyframes qPop {
+    from { opacity: 0; transform: translateY(16px) scale(.94) rotate(-1.4deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* …puis le texte se dévoile de gauche à droite */
+  .question.reveal .qtxt {
+    animation: qWipe .46s calc(var(--qdelay, 0ms) + .24s) cubic-bezier(.35,0,.15,1) both;
+  }
+
+  @keyframes qWipe {
+    from { clip-path: inset(0 100% -18% 0); opacity: .25; }
+    to   { clip-path: inset(0 -6% -18% 0); opacity: 1; }
+  }
+
+  /* ---------- faux départ : barré puis détruit ---------- */
+
+  .question.is-gag { position: relative; }
+
+  /* le trait qui raye, tracé de gauche à droite */
+  .question .strike {
+    position: absolute;
+    left: 5%; right: 5%;
+    top: 52%;
+    height: 7px;
+    border-radius: 4px;
+    background: var(--rose);
+    box-shadow: 0 0 0 2px var(--ink);
+    transform: scaleX(0) rotate(-.6deg);
+    transform-origin: left center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .question.gag-raye .strike {
+    animation: strikeIn .5s cubic-bezier(.3,.85,.3,1) forwards;
+  }
+
+  @keyframes strikeIn {
+    from { transform: scaleX(0) rotate(-.6deg); opacity: 1; }
+    to   { transform: scaleX(1) rotate(-.6deg); opacity: 1; }
+  }
+
+  /* le texte se disloque et tombe, le trait part avec lui */
+  .question.gag-casse .qtxt { animation: qShred .6s cubic-bezier(.4,0,.7,1) forwards; }
+  .question.gag-casse .strike { animation: qShredLine .6s cubic-bezier(.4,0,.7,1) forwards; }
+  .question.gag-casse { animation: qShake .6s ease both; }
+
+  @keyframes qShred {
+    0%   { opacity: 1; transform: none; filter: none; }
+    22%  { opacity: 1; transform: translateY(-5px) rotate(-1deg); }
+    100% { opacity: 0; transform: translateY(30px) rotate(2.5deg) scale(.93); filter: blur(7px); }
+  }
+
+  @keyframes qShredLine {
+    0%   { opacity: 1; transform: scaleX(1) rotate(-.6deg); }
+    100% { opacity: 0; transform: scaleX(1) translateY(26px) rotate(4deg); }
+  }
+
+  @keyframes qShake {
+    0%, 100% { transform: none; }
+    15%  { transform: translateX(-6px) rotate(-.7deg); }
+    35%  { transform: translateX(6px) rotate(.7deg); }
+    55%  { transform: translateX(-4px); }
+    75%  { transform: translateX(3px); }
+  }
+
+  /* ---------- QCM ---------- */
+
+  .options { display: flex; flex-direction: column; gap: 13px; max-width: 74ch; }
+
+  .option {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 13px 20px;
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    box-shadow: var(--cutout-sm);
+    font-size: clamp(15px, 1.25vw, 21px);
+    line-height: 1.45;
+  }
+
+  .option .letter {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 1.5em;
+    width: 1.6em; height: 1.6em;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--rose);
+    border: 3px solid var(--ink);
+    color: #fff;
+    line-height: 1;
+    padding-top: .12em;
+  }
+
+  /* arrivée d'une option révélée */
+  @keyframes optPop {
+    0%   { opacity: 0; transform: translateX(-26px) scale(.95); }
+    62%  { opacity: 1; transform: translateX(5px) scale(1.015); }
+    100% { opacity: 1; transform: none; }
+  }
+  .option.pop { animation: optPop .38s cubic-bezier(.2,.9,.3,1.12) both; }
+
+  @keyframes letterPop {
+    0%   { transform: scale(.25) rotate(-45deg); }
+    68%  { transform: scale(1.18) rotate(8deg); }
+    100% { transform: none; }
+  }
+  .option.pop .letter { animation: letterPop .46s .05s cubic-bezier(.2,.9,.3,1.2) both; }
+
+  .hidden-note {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--raised);
+    border: 3px dashed var(--ink);
+    border-radius: 14px;
+    padding: 20px 24px;
+    font-size: clamp(13px, 1.1vw, 18px);
+    max-width: 60ch;
+  }
+
+  /* ---------- chrono ---------- */
+
+  .timerwrap { display: flex; align-items: center; gap: 20px; }
+
+  .ring { width: 74px; height: 74px; flex: none; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 8; }
+  .ring .track { stroke: rgba(20,9,15,.16); }
+  .ring .bar {
+    stroke: var(--amber);
+    stroke-linecap: butt;
+    transition: stroke-dashoffset .25s linear, stroke .3s;
+  }
+  .ring.urgent .bar { stroke: var(--rose); }
+
+  .count {
+    font-family: var(--display);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(38px, 4vw, 66px);
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: .02em;
+  }
+  .count.urgent { color: var(--rose); }
+  .count.done { color: var(--miss); }
+
+  /* ---------- pastilles de duo ---------- */
+
+  .scorerow { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .chip {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(16px, 1.35vw, 24px);
+    letter-spacing: .05em;
+    padding: clamp(7px, 1.2vh, 11px) clamp(14px, 1.4vw, 20px);
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: var(--cutout-sm);
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    transition: transform .1s, box-shadow .1s, background .14s;
+  }
+
+  .chip:hover { transform: translateY(-3px); box-shadow: 0 0 0 5px #fff, 0 12px 22px rgba(20,50,90,.28); }
+  .chip:active { transform: translateY(1px); box-shadow: 0 0 0 5px #fff, 0 3px 8px rgba(20,50,90,.22); }
+  .chip:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+  .chip .mark {
+    width: 22px; height: 22px;
+    border: 3px solid var(--ink);
+    background: var(--raised);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  /* matché : le duo passe en jaune criard, la coche en rose */
+  .chip.on { background: var(--yellow); }
+  .chip.on .mark { background: var(--rose); color: #fff; }
+
+  /* cœurs de vie de la finale */
+  .hprow { margin-left: 8px; letter-spacing: 2px; white-space: nowrap; }
+  .hp { color: var(--rose); }
+  .hp.lost { color: rgba(18,16,15,.22); }
+
+  /* un duo qui vient de rater cette question */
+  .chip.win { background: #0B8A46; color: #fff; }
+  .chip.win .mark { background: #fff; }
+
+  .chip.fail { background: var(--rose); color: #fff; }
+  .chip.fail .mark { background: #fff; color: var(--rose); }
+  .chip.fail .hp { color: #fff; }
+  .chip.fail .hp.lost { color: rgba(255,255,255,.35); }
+
+  .chip.out {
+    opacity: .45;
+    pointer-events: none;
+    text-decoration: line-through;
+    box-shadow: none;
+    background: var(--ground-2);
+  }
+
+  /* la cible : surlignée au marqueur */
+  .target {
+    font-weight: 900;
+    background: linear-gradient(
+      transparent 56%, var(--yellow) 56%, var(--yellow) 94%, transparent 94%);
+    padding: 0 .1em;
+  }
+  .other { opacity: .5; }
+  .amp { opacity: .35; margin: 0 3px; }
+  .chip.on .target {
+    background: none;
+    border-bottom: 3px solid var(--ink);
+  }
+
+  /* ---------- boutons ---------- */
+
+  .btn {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(14px, 1.15vw, 19px);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    padding: 11px 22px;
+    background: var(--raised);
+    color: var(--ink);
+    border: 3px solid var(--ink);
+    border-radius: 10px;
+    box-shadow: var(--cutout-sm);
+    cursor: pointer;
+    transition: transform .1s, box-shadow .1s, background .14s;
+  }
+
+  .btn:hover { transform: translateY(-3px); box-shadow: 0 0 0 5px #fff, 0 12px 22px rgba(20,50,90,.28); }
+  .btn:active { transform: translateY(1px); box-shadow: 0 0 0 5px #fff, 0 3px 8px rgba(20,50,90,.22); }
+  .btn:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+  .btn.primary { background: var(--rose); color: #fff; }
+  .btn.primary:hover { background: #ff5087; }
+  .btn.ghost { background: rgba(255,255,255,.75); }
+  .btn.ghost:hover { background: var(--raised); }
+  .btn:disabled {
+    opacity: .38;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    background: var(--ground-2);
+  }
+
+  kbd {
+    font-family: var(--data);
+    font-size: .78em;
+    background: var(--yellow);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--ink);
+    margin-left: 9px;
+  }
+
+  /* ---------- panneau des scores ---------- */
+
+  .panel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(460px, 92vw);
+    background: var(--ground);
+    border-left: 5px solid var(--ink);
+    z-index: 20;
+    padding: var(--pad);
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: -14px 0 0 rgba(20,9,15,.12);
+  }
+  .panel.open { transform: none; }
+
+  .panel h2 {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-size: 20px;
+    color: var(--ink);
+    margin: 0 0 8px;
+  }
+  .panel h2::before { content: "♥ "; color: var(--rose); }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 26px; }
+
+  th, td {
+    text-align: left;
+    padding: 9px 6px;
+    border-bottom: 2px solid rgba(20,9,15,.18);
+    font-size: 16px;
+  }
+
+  th {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  td.num {
+    font-family: var(--display);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-size: 20px;
+    color: var(--rose-dim);
+  }
+
+  tr.gone td { color: var(--miss); }
+  tr.gone td.num { color: var(--miss); }
+
+  .cible {
+    font-family: var(--data);
+    font-size: 11px;
+    letter-spacing: .04em;
+    color: var(--ink);
+    background: var(--raised);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+  .cible:hover { background: var(--yellow); }
+
+  /* ---------- classements ---------- */
+
+  /* liste de reprise en Manche 3 : un duo, deux rôles possibles */
+  .picklist { display: flex; flex-direction: column; gap: clamp(6px, 1vh, 10px); max-width: 780px; }
+
+  .pickrow {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: clamp(6px, 1vh, 10px) clamp(12px, 1.3vw, 18px);
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: var(--cutout-sm);
+  }
+  .pickrow.isfin  { background: #E8F7EE; }
+  .pickrow.isjury { background: #FFF3D2; }
+
+  .pickrow .pickname {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .04em;
+    font-size: clamp(16px, min(1.5vw, 2.4vh), 25px);
+  }
+  .pickrow .btn { font-size: clamp(11px, min(.95vw, 1.5vh), 15px); padding: 7px 13px; }
+
+  .ranks { display: flex; flex-direction: column; gap: clamp(7px, 1.1vh, 11px); max-width: 780px; }
+
+  .rank {
+    display: grid;
+    grid-template-columns: 46px 1fr auto;
+    gap: 18px;
+    align-items: center;
+    padding: clamp(9px, 1.3vh, 13px) 18px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    background: var(--raised);
+    box-shadow: var(--cutout-sm);
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(17px, min(1.55vw, 2.6vh), 27px);
+    letter-spacing: .04em;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    transition: transform .1s, box-shadow .1s, background .14s;
+  }
+  .rank:hover { transform: translateY(-3px); box-shadow: 0 0 0 5px #fff, 0 12px 22px rgba(20,50,90,.28); }
+  .rank:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+  .rank .pos { font-family: var(--display); color: var(--muted); font-size: .9em; }
+  .rank .pts { font-family: var(--display); color: var(--rose-dim); font-variant-numeric: tabular-nums; }
+  .rank.picked { background: var(--rose); color: #fff; }
+  .rank.picked .pos, .rank.picked .pts { color: #fff; }
+  .rank.picked .pos::after { content: " ✕"; }
+  .rank.picked.qualif { background: #0B8A46; }
+  .rank.tie { border-left: 10px solid var(--yellow); }
+
+  /* ---------- titres criards ---------- */
+
+  .winner {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(46px, 7.4vw, 132px);
+    line-height: .98;
+    letter-spacing: .01em;
+    color: var(--yellow);
+    -webkit-text-stroke: 5px var(--ink);
+    paint-order: stroke fill;
+    filter: drop-shadow(0 0 8px #fff) drop-shadow(0 12px 20px rgba(20,50,90,.3));
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .title-h1 {
+    margin: 0;
+    line-height: .88;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .title-h1 .t-z {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(52px, 9vw, 168px);
+    letter-spacing: .01em;
+    color: var(--raised);
+    -webkit-text-stroke: 5px var(--ink);
+    paint-order: stroke fill;
+    filter: drop-shadow(0 0 7px #fff) drop-shadow(0 10px 18px rgba(20,50,90,.3));
+  }
+  .title-h1 .t-go {
+    font-family: var(--script);
+    font-size: clamp(46px, 7.6vw, 140px);
+    color: var(--yellow);
+    -webkit-text-stroke: 4px var(--ink);
+    paint-order: stroke fill;
+    margin-top: -.12em;
+    margin-left: .9em;
+    filter: drop-shadow(0 0 7px #fff) drop-shadow(0 10px 18px rgba(20,50,90,.3));
+  }
+
+  .warn {
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 13px 18px;
+    background: var(--yellow);
+    box-shadow: var(--cutout-sm);
+    font-size: clamp(14px, 1.15vw, 19px);
+    font-weight: 600;
+    max-width: 68ch;
+    line-height: 1.5;
+  }
+
+  /* ---------- éditeur de pack ---------- */
+
+  .editor {
+    width: 100%;
+    max-width: 980px;
+    font-size: 15px;
+    text-align: left;
+  }
+
+  .ed-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .ed-tab {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-size: 14px;
+    padding: 8px 15px;
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: var(--cutout-sm);
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .ed-tab.on { background: var(--yellow); }
+  .ed-count {
+    font-family: var(--data);
+    font-size: 11px;
+    background: rgba(18,16,15,.1);
+    border-radius: 999px;
+    padding: 1px 7px;
+    margin-left: 5px;
+  }
+
+  .ed-status {
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    background: var(--raised);
+    padding: 9px 14px;
+    margin-bottom: 14px;
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .ed-status .ok { color: #0B8A46; font-weight: 800; }
+  .ed-status .ko { color: var(--rose-dim); font-weight: 800; }
+
+  .ed-card {
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 13px 15px;
+    margin-bottom: 11px;
+    box-shadow: var(--cutout-sm);
+  }
+  .ed-card.compact { padding: 9px 13px; }
+
+  .ed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .ed-head strong { font-family: var(--display); font-weight: 400; letter-spacing: .04em; font-size: 18px; }
+  .ed-head .ed-count { margin-left: 0; }
+  .ed-head > :nth-child(2) { margin-left: auto; }
+
+  .ed-sub {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 13px 0 7px;
+  }
+
+  .ed-f { display: block; margin-bottom: 8px; }
+  .ed-f > span {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    letter-spacing: .02em;
+  }
+  .ed-f input, .ed-f textarea, .ed-f select {
+    width: 100%;
+    font: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+    background: #FBFDFF;
+    border: 2px solid rgba(18,16,15,.35);
+    border-radius: 8px;
+    padding: 7px 10px;
+    box-sizing: border-box;
+  }
+  .ed-f textarea { resize: vertical; line-height: 1.4; }
+  .ed-f input:focus, .ed-f textarea:focus, .ed-f select:focus {
+    outline: none;
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(30,86,160,.18);
+  }
+
+  .ed-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .ed-check { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.4; }
+  .ed-check input { margin-top: 2px; width: 17px; height: 17px; }
+
+  .ed-opts { margin: 9px 0 4px; }
+  .ed-lbl {
+    font-size: 11.5px;
+    color: var(--muted);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .ed-opt { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .ed-opt input {
+    flex: 1;
+    font: inherit;
+    font-size: 14px;
+    background: #FBFDFF;
+    border: 2px solid rgba(18,16,15,.35);
+    border-radius: 8px;
+    padding: 6px 9px;
+  }
+  .ed-letter {
+    font-family: var(--display);
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--rose);
+    color: #fff;
+    border: 2px solid var(--ink);
+    font-size: 14px;
+    flex: none;
+  }
+
+  .ed-x {
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    padding: 5px 9px;
+    background: var(--raised);
+    border: 2px solid var(--ink);
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .ed-x:hover { background: var(--ground-2); }
+  .ed-x:disabled { opacity: .3; cursor: not-allowed; }
+  .ed-x.danger:hover { background: var(--rose); color: #fff; }
+  .ed-ord { display: inline-flex; gap: 4px; }
+
+  .ed-add {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    background: var(--ground-2);
+    border: 2px dashed var(--ink);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .ed-add:hover { background: var(--yellow); }
+  .ed-add.gros { display: block; width: 100%; padding: 11px; margin: 4px 0 26px; font-size: 14.5px; }
+
+  .ed-det { margin-top: 8px; }
+  .ed-det summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .ed-hint {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 4px 0 12px;
+  }
+
+  /* dans l'éditeur, la scène défile au lieu de centrer */
+  .stage:has(.editor) {
+    justify-content: flex-start;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  /* ---------- panneaux « comment on joue » ---------- */
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(14px, 1.6vw, 26px);
+    max-width: 1240px;
+  }
+
+  .step {
+    position: relative;
+    background: var(--raised);
+    border: 4px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: var(--cutout-sm);
+    padding: clamp(14px, 1.8vh, 24px) clamp(14px, 1.4vw, 22px) clamp(12px, 1.5vh, 20px);
+    text-align: center;
+  }
+
+  .step .stepnum {
+    position: absolute;
+    top: -19px; left: -13px;
+    width: 42px; height: 42px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--rose);
+    color: #fff;
+    border: 4px solid var(--ink);
+    box-shadow: 0 0 0 4px #fff;
+    font-family: var(--display);
+    font-size: 23px;
+    padding-top: 2px;
+  }
+
+  .step .ic {
+    display: block;
+    width: clamp(72px, min(7vw, 11vh), 116px);
+    height: auto;
+    margin: 0 auto clamp(6px, 1vh, 12px);
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .step .ic .fillw { fill: var(--raised); }
+  .step .ic .acc { fill: var(--yellow); }
+  .step .ic .acc-f { fill: var(--rose); }
+  .step .ic .ic-t {
+    font-family: var(--display);
+    font-size: 42px;
+    fill: var(--ink);
+    stroke: none;
+    text-anchor: middle;
+  }
+
+  .step h3 {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    font-size: clamp(15px, min(1.4vw, 2.2vh), 24px);
+    margin: 0 0 6px;
+    color: var(--rose-dim);
+  }
+
+  .step p {
+    margin: 0;
+    font-size: clamp(13px, min(1.05vw, 1.7vh), 18px);
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .step p b { color: var(--amber); }
+
+  .stage:has(.ranks) { gap: clamp(10px, 1.5vh, 22px); }
+  .stage:has(.ranks) .warn { padding: 10px 16px; }
+
+  .cats { display: flex; flex-wrap: wrap; gap: 11px; }
+  .cats .btn { padding: 9px 17px; }
+  .stage:has(.cats) .question { font-size: clamp(24px, min(3.2vw, 5vh), 48px); margin-bottom: 28px; }
+
+  /* ---------- annonce de duo (Manche 2) ---------- */
+
+  .announce {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: linear-gradient(#F0433C, #C3141A);
+    animation: annFade 1.8s cubic-bezier(.4,0,.2,1) forwards;
+  }
+
+  /* trame de cœurs qui gonflent au passage de la vague */
+  .ann-hearts {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  @keyframes annFade {
+    0%   { opacity: 0; }
+    8%   { opacity: 1; }
+    76%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* bande de vitesse qui traverse l'écran */
+  .announce .ann-sweep {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 45vw;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+    animation: annSweep 1.15s cubic-bezier(.5,0,.2,1) forwards;
+  }
+
+  @keyframes annSweep {
+    from { transform: translateX(-60vw) skewX(-14deg); }
+    to   { transform: translateX(120vw) skewX(-14deg); }
+  }
+
+  .announce .ann-inner {
+    position: relative;
+    text-align: center;
+    padding: 0 var(--pad);
+  }
+
+  .announce .ann-lead {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-size: clamp(14px, 1.5vw, 23px);
+    color: #fff;
+    margin-bottom: 18px;
+    animation: annLead .55s .12s cubic-bezier(.2,.7,.3,1) both;
+  }
+  .announce .ann-lead::before { content: "♥ "; }
+  .announce .ann-lead::after  { content: " ♥"; }
+
+  @keyframes annLead {
+    from { opacity: 0; transform: translateY(14px); letter-spacing: .5em; }
+    to   { opacity: 1; transform: none; letter-spacing: .2em; }
+  }
+
+  /* le nom du duo dans une bulle blanche */
+  .announce .ann-who {
+    display: inline-block;
+    font-family: var(--heavy);
+    font-weight: 400;
+    font-size: clamp(30px, 5vw, 84px);
+    line-height: 1.06;
+    text-wrap: balance;
+    color: var(--ink);
+    background: var(--raised);
+    border: 5px solid var(--ink);
+    border-radius: 34px;
+    padding: 16px clamp(22px, 3vw, 46px);
+    box-shadow: var(--cutout);
+    animation: annWho .7s .2s cubic-bezier(.16,1.1,.3,1) both;
+  }
+
+  @keyframes annWho {
+    from { opacity: 0; transform: translateY(30px) scale(.9) rotate(-3deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .announce .ann-bar {
+    height: 6px;
+    margin: 26px auto 18px;
+    max-width: 320px;
+    background: var(--yellow);
+    border: 3px solid var(--ink);
+    box-shadow: 0 0 0 4px #fff;
+    transform-origin: center;
+    animation: annBar .6s .42s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  @keyframes annBar {
+    from { transform: scaleX(0); opacity: 0; }
+    to   { transform: scaleX(1); opacity: 1; }
+  }
+
+  .announce .ann-step {
+    display: inline-block;
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-size: clamp(14px, 1.5vw, 24px);
+    color: var(--ink);
+    background: var(--yellow);
+    border: 3px solid var(--ink);
+    box-shadow: var(--cutout-sm);
+    padding: 5px 16px;
+    transform: rotate(-1.5deg);
+    animation: annStep .5s .6s ease both;
+  }
+
+  @keyframes annStep {
+    from { opacity: 0; transform: translateY(10px) rotate(-1.5deg); }
+    to   { opacity: 1; transform: rotate(-1.5deg); }
+  }
+
+  /* la question réapparaît en fondu derrière l'annonce qui s'efface */
+  .stage.enter { animation: stageIn .65s .95s cubic-bezier(.2,.7,.3,1) both; }
+
+  @keyframes stageIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---------- destruction d'un cœur (Manche 3) ---------- */
+
+  /* ---------- célébration du vainqueur ---------- */
+
+  .victory {
+    position: fixed;
+    inset: 0;
+    z-index: 48;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: linear-gradient(#FFFFFF 0%, #DDEEFC 55%, #B9D9F5 100%);
+    animation: vcFade 4.2s ease forwards;
+  }
+
+  @keyframes vcFade {
+    0%   { opacity: 0; }
+    5%   { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .victory .vc-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .victory .vc-inner { position: relative; text-align: center; padding: 0 var(--pad); }
+
+  .victory .vc-word {
+    font-family: var(--display);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-size: clamp(38px, min(6.5vw, 10vh), 104px);
+    line-height: 1;
+    color: var(--yellow);
+    -webkit-text-stroke: 5px var(--ink);
+    paint-order: stroke fill;
+    transform: rotate(-3deg);
+    animation: vcWord .5s cubic-bezier(.16,1.25,.3,1) both;
+  }
+
+  @keyframes vcWord {
+    from { opacity: 0; transform: rotate(-3deg) scale(.2); }
+    65%  { opacity: 1; transform: rotate(-3deg) scale(1.2); }
+    to   { opacity: 1; transform: rotate(-3deg) scale(1); }
+  }
+
+  .victory .vc-name {
+    display: inline-block;
+    margin-top: clamp(12px, 2.4vh, 30px);
+    font-family: var(--heavy);
+    font-weight: 400;
+    font-size: clamp(26px, min(4.4vw, 6.6vh), 76px);
+    line-height: 1.08;
+    text-wrap: balance;
+    color: var(--ink);
+    background: var(--raised);
+    border: 5px solid var(--ink);
+    border-radius: 30px;
+    padding: clamp(10px, 1.8vh, 20px) clamp(20px, 3vw, 48px);
+    box-shadow: var(--cutout);
+    animation: vcName .65s .3s cubic-bezier(.16,1.1,.3,1) both;
+  }
+
+  @keyframes vcName {
+    from { opacity: 0; transform: translateY(34px) scale(.9) rotate(2deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .victory .vc-sub {
+    margin-top: clamp(12px, 2vh, 22px);
+    font-size: clamp(20px, min(2.2vw, 3.4vh), 38px);
+    letter-spacing: 3px;
+    animation: vcSub .5s .62s ease both;
+  }
+  .victory .vc-cnt {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: clamp(12px, min(1.2vw, 1.9vh), 19px);
+    color: var(--muted);
+    margin-left: 10px;
+    vertical-align: middle;
+  }
+
+  @keyframes vcSub {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .hbreak {
+    position: fixed;
+    inset: 0;
+    z-index: 47;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: radial-gradient(70% 70% at 50% 45%, #3A0A16, #14060B 80%);
+    animation: hbFade 1.7s ease forwards;
+  }
+
+  @keyframes hbFade {
+    0%   { opacity: 0; }
+    7%   { opacity: 1; }
+    82%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .hbreak .hb-inner { text-align: center; padding: 0 var(--pad); }
+
+  /* l'onomatopée, en gros et de travers */
+  .hbreak .hb-word {
+    font-family: var(--display);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: clamp(40px, min(7vw, 11vh), 108px);
+    line-height: 1;
+    color: var(--yellow);
+    -webkit-text-stroke: 5px var(--ink);
+    paint-order: stroke fill;
+    filter: drop-shadow(0 0 8px rgba(255,212,0,.45));
+    transform: rotate(-4deg);
+    animation: hbWord .4s cubic-bezier(.16,1.2,.3,1) both;
+    margin-bottom: clamp(10px, 2vh, 26px);
+  }
+
+  @keyframes hbWord {
+    from { opacity: 0; transform: rotate(-4deg) scale(.3); }
+    60%  { opacity: 1; transform: rotate(-4deg) scale(1.18); }
+    to   { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+
+  .hbreak .hb-duos {
+    display: flex;
+    justify-content: center;
+    gap: clamp(28px, 5vw, 80px);
+    flex-wrap: wrap;
+  }
+
+  /* le cœur : deux moitiés dentelées qui se séparent */
+  .hbreak .hb-shatter {
+    position: relative;
+    width: clamp(90px, min(11vw, 17vh), 170px);
+    height: clamp(83px, min(10.1vw, 15.6vh), 156px);
+    margin: 0 auto clamp(8px, 1.4vh, 16px);
+    animation: hbShake .3s .05s ease-in-out both;
+  }
+
+  @keyframes hbShake {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    20%  { transform: translateX(-7px) rotate(-4deg); }
+    45%  { transform: translateX(7px) rotate(4deg); }
+    70%  { transform: translateX(-5px) rotate(-3deg); }
+  }
+
+  .hbreak .hb-shatter svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+  }
+  .hbreak .hb-shatter path {
+    fill: var(--rose);
+    stroke: var(--ink);
+    stroke-width: 4;
+    stroke-linejoin: round;
+  }
+
+  /* la cassure est en zigzag, pas une coupe nette */
+  .hbreak .hb-l {
+    clip-path: polygon(0 0, 54% 0, 44% 22%, 56% 40%, 43% 58%, 53% 78%, 46% 100%, 0 100%);
+    animation: hbLeft .75s .34s cubic-bezier(.3,.1,.5,1) both;
+  }
+  .hbreak .hb-r {
+    clip-path: polygon(54% 0, 100% 0, 100% 100%, 46% 100%, 53% 78%, 43% 58%, 56% 40%, 44% 22%);
+    animation: hbRight .75s .34s cubic-bezier(.3,.1,.5,1) both;
+  }
+
+  @keyframes hbLeft {
+    from { transform: none; opacity: 1; }
+    to   { transform: translate(-42px, 46px) rotate(-30deg); opacity: 0; }
+  }
+  @keyframes hbRight {
+    from { transform: none; opacity: 1; }
+    to   { transform: translate(42px, 52px) rotate(34deg); opacity: 0; }
+  }
+
+  .hbreak .hb-name {
+    font-family: var(--heavy);
+    font-weight: 400;
+    font-size: clamp(17px, min(2vw, 3vh), 34px);
+    color: #fff;
+    animation: hbInfo .4s .5s ease both;
+  }
+
+  .hbreak .hb-left {
+    margin-top: 6px;
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: clamp(12px, min(1.2vw, 1.9vh), 19px);
+    color: var(--yellow);
+    animation: hbInfo .4s .62s ease both;
+  }
+
+  @keyframes hbInfo {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* la question suivante revient une fois les morceaux tombés */
+  .stage.enter-break { animation: stageIn .5s 1.15s cubic-bezier(.2,.7,.3,1) both; }
+
+  /* ---------- transition Éclair / Spotlight (Manche 1) ---------- */
+
+  .flash {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    animation: flFade 1.15s ease forwards;
+  }
+
+  @keyframes flFade {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    72%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .flash.eclair { background: linear-gradient(#FFE14D, var(--yellow) 55%, #F0A800); }
+  .flash.spot   { background: radial-gradient(60% 70% at 50% 42%, #2C6FC4, #0E2E5C 70%); }
+
+  /* Éclair : traits de vitesse qui fusent */
+  .flash.eclair .fl-rays {
+    position: absolute;
+    inset: -20%;
+    background: repeating-linear-gradient(96deg,
+      rgba(255,255,255,.75) 0 3px, transparent 3px 42px);
+    animation: flRays .55s cubic-bezier(.2,.8,.3,1) both;
+  }
+  @keyframes flRays {
+    from { transform: translateX(-24%); opacity: 0; }
+    45%  { opacity: .9; }
+    to   { transform: translateX(10%); opacity: 0; }
+  }
+
+  /* Spotlight : le faisceau qui s'ouvre */
+  .flash.spot .fl-rays {
+    position: absolute;
+    left: 50%; top: -8%;
+    width: 86vw; height: 118%;
+    margin-left: -43vw;
+    background: linear-gradient(#fff, rgba(255,255,255,0) 78%);
+    opacity: .22;
+    clip-path: polygon(43% 0, 57% 0, 100% 100%, 0 100%);
+    transform-origin: 50% 0;
+    animation: flBeam .7s cubic-bezier(.2,.8,.3,1) both;
+  }
+  @keyframes flBeam {
+    from { transform: scaleY(.15) scaleX(.5); opacity: 0; }
+    to   { transform: none; opacity: .22; }
+  }
+
+  .flash .fl-inner { position: relative; text-align: center; padding: 0 var(--pad); }
+
+  .flash .fl-badge {
+    display: inline-block;
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-size: clamp(34px, min(6vw, 9vh), 96px);
+    line-height: 1;
+    padding: .16em .4em;
+    border: 5px solid var(--ink);
+    background: var(--raised);
+    box-shadow: var(--cutout);
+    transform: rotate(-2deg);
+    animation: flBadge .45s cubic-bezier(.16,1.15,.3,1) both;
+  }
+  .flash.spot .fl-badge { color: var(--ink); }
+
+  @keyframes flBadge {
+    from { opacity: 0; transform: rotate(-2deg) scale(.55) translateY(18px); }
+    to   { opacity: 1; transform: rotate(-2deg); }
+  }
+
+  .flash .fl-rule {
+    margin-top: 18px;
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-size: clamp(13px, min(1.5vw, 2.4vh), 24px);
+    color: var(--ink);
+    animation: flSub .4s .2s ease both;
+  }
+  .flash.spot .fl-rule { color: #EAF3FF; }
+
+  .flash .fl-num {
+    margin-top: 8px;
+    font-size: clamp(12px, min(1.2vw, 2vh), 19px);
+    font-weight: 700;
+    color: rgba(18,16,15,.62);
+    animation: flSub .4s .3s ease both;
+  }
+  .flash.spot .fl-num { color: rgba(234,243,255,.72); }
+
+  @keyframes flSub {
+    from { opacity: 0; transform: translateY(9px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* après une transition courte, la question revient vite */
+  .stage.enter-fast { animation: stageIn .45s .5s cubic-bezier(.2,.7,.3,1) both; }
+
+  /* ---------- bandeau sponsor ---------- */
+
+  .sponsor {
+    position: fixed;
+    inset: 0;
+    z-index: 46;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    background: rgba(12,30,55,.55);
+    animation: spoFade 2.6s ease forwards;
+  }
+
+  @keyframes spoFade {
+    0%   { opacity: 0; }
+    7%   { opacity: 1; }
+    84%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .sponsor .sp-card {
+    background: var(--raised);
+    border: 5px solid var(--ink);
+    border-radius: 22px;
+    box-shadow: var(--cutout);
+    padding: clamp(20px, 3vh, 38px) clamp(26px, 4vw, 62px);
+    text-align: center;
+    max-width: 84vw;
+    animation: spoCard .6s .08s cubic-bezier(.16,1.06,.3,1) both;
+  }
+
+  @keyframes spoCard {
+    from { opacity: 0; transform: translateY(26px) scale(.94); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .sponsor .sp-pre {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    font-size: clamp(12px, 1.2vw, 19px);
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .sponsor .sp-by {
+    font-family: var(--heavy);
+    font-size: clamp(22px, min(3.2vw, 5vh), 50px);
+    line-height: 1.12;
+    color: var(--rose-dim);
+    text-wrap: balance;
+    animation: spoBy .5s .28s cubic-bezier(.2,.7,.3,1) both;
+  }
+
+  @keyframes spoBy {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .sponsor .sp-fine {
+    margin-top: 16px;
+    font-size: clamp(12px, 1.05vw, 17px);
+    color: var(--muted);
+    font-style: italic;
+    animation: spoBy .5s .5s cubic-bezier(.2,.7,.3,1) both;
+  }
+
+  /* ---------- splash d'ouverture de manche ---------- */
+
+  .splash {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: linear-gradient(#FFFFFF 0%, #DCEDFC 55%, #B9D9F5 100%);
+    animation: spFade 2.2s cubic-bezier(.4,0,.2,1) forwards;
+  }
+
+  .splash::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(30,86,160,.16) 2.2px, transparent 2.3px);
+    background-size: 19px 19px;
+  }
+
+  @keyframes spFade {
+    0%   { opacity: 0; }
+    6%   { opacity: 1; }
+    82%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .splash .sp-inner {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 0 var(--pad);
+  }
+
+  .splash .sp-lead {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: .38em;
+    text-transform: uppercase;
+    font-size: clamp(15px, 1.7vw, 27px);
+    color: var(--ink);
+    animation: spLead .6s .05s cubic-bezier(.2,.7,.3,1) both;
+  }
+
+  @keyframes spLead {
+    from { opacity: 0; letter-spacing: .9em; }
+    to   { opacity: 1; letter-spacing: .38em; }
+  }
+
+  /* le numéro de manche dans le cœur du logo */
+  .splash .sp-num {
+    position: relative;
+    display: inline-block;
+    margin: 4px 0 10px;
+    animation: spNum .85s .1s cubic-bezier(.16,1.05,.3,1) both;
+  }
+
+  .splash .sp-heart {
+    display: block;
+    width: clamp(200px, 30vw, 400px);
+    height: auto;
+    overflow: visible;
+    filter: drop-shadow(0 14px 26px rgba(20,50,90,.32));
+  }
+  .splash .sp-heart .hk { fill: none; stroke: #fff; stroke-width: 13; stroke-linejoin: round; }
+  .splash .sp-heart .hf { fill: url(#hg); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
+  .splash .sp-heart .hg2 { fill: rgba(255,255,255,.42); }
+
+  .splash .sp-n {
+    position: absolute;
+    left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(96px, 15vw, 200px);
+    line-height: 1;
+    color: #fff;
+    -webkit-text-stroke: 4px var(--ink);
+    paint-order: stroke fill;
+  }
+
+  @keyframes spNum {
+    from { opacity: 0; transform: scale(.35) rotate(-14deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .splash .sp-title {
+    display: inline-block;
+    font-family: var(--heavy);
+    font-weight: 400;
+    font-size: clamp(22px, 3.1vw, 52px);
+    line-height: 1.1;
+    text-wrap: balance;
+    color: var(--ink);
+    background: var(--raised);
+    border: 4px solid var(--ink);
+    box-shadow: var(--cutout);
+    padding: 10px clamp(18px, 2.4vw, 34px);
+    transform: rotate(-1.2deg);
+    animation: spTitle .6s .62s cubic-bezier(.2,.7,.3,1) both;
+  }
+
+  @keyframes spTitle {
+    from { opacity: 0; transform: translateY(20px) rotate(-1.2deg); }
+    to   { opacity: 1; transform: rotate(-1.2deg); }
+  }
+
+  .splash .sp-sub {
+    margin-top: 26px;
+    font-size: clamp(15px, 1.35vw, 23px);
+    font-weight: 700;
+    color: var(--ink);
+    animation: spSub .55s .85s ease both;
+  }
+
+  @keyframes spSub {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* après un splash, la scène apparaît plus tard qu'après une simple annonce */
+  .stage.enter-late { animation: stageIn .7s 1.55s cubic-bezier(.2,.7,.3,1) both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="halftone" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<div id="app">
+  <div class="rail" id="rail-top"></div>
+  <div class="stage" id="stage"></div>
+  <div class="rail bottom" id="rail-bottom"></div>
+</div>
+
+<div class="panel" id="panel"></div>
+
+<script>
+"use strict";
+
+/* ============================ CONTENU ============================ */
+
+const PACK_DEFAUT = {
+  "version": 1,
+  "meta": {
+    "nom": "Z'amours and Go",
+    "sousTitre": "and Go",
+    "auteur": ""
+  },
+  "reglages": {
+    "m2Tours": 6,
+    "m3Coeurs": 3,
+    "chrono": 20
+  },
+  "duos": [
+    {
+      "id": "ak",
+      "a": "Axel",
+      "b": "Kelly",
+      "joker": {
+        "gag": "",
+        "q": "Selon …, qui est le pire membre des BLACKPINK ?",
+        "opts": []
+      }
+    },
+    {
+      "id": "vv",
+      "a": "Valentin",
+      "b": "Virginie",
+      "joker": {
+        "gag": "",
+        "q": "Vous êtes les deux couteaux suisses de la boîte. Vous démissionnez tous les deux demain matin. Selon …, c'est quoi le premier truc qui s'effondre ?",
+        "opts": []
+      }
+    },
+    {
+      "id": "js",
+      "a": "Juliette",
+      "b": "Sarah",
+      "joker": {
+        "gag": "",
+        "q": "Quel est LE client que … déteste le plus ?",
+        "opts": []
+      }
+    },
+    {
+      "id": "an",
+      "a": "Aurélie",
+      "b": "Nico",
+      "joker": {
+        "gag": "Le meilleur commercial entre vous deux, c'est… Oups, un peu trop violent.",
+        "q": "Alors soyons honnêtes : qui de vous deux serait capable de vendre une licence à sa propre grand-mère ?",
+        "opts": [
+          "Nico",
+          "Aurélie",
+          "Les deux"
+        ]
+      }
+    },
+    {
+      "id": "sf",
+      "a": "Sophie",
+      "b": "Flo",
+      "joker": {
+        "gag": "C'est quoi le code pin de Flo ? … Oups, trop sensible.",
+        "q": "Vraie question : de qui est-ce que Sophie a dit qu'elle était amoureuse pour faire taire les soupçons sur votre amour ?",
+        "opts": []
+      }
+    },
+    {
+      "id": "pc",
+      "a": "Perrine",
+      "b": "Cloé",
+      "joker": {
+        "gag": "",
+        "q": "Le chien de Perrine et le chat de Cloé sont enfermés ensemble dans l'open space tout un week-end. Lundi matin, on ouvre la porte — qu'est-ce qu'on trouve ?",
+        "opts": [
+          "Ils dorment collés l'un à l'autre. Une amitié est née, personne ne comprend.",
+          "Le chat est perché en haut de l'armoire depuis vendredi 18h et n'en est jamais redescendu. Le chien attend en bas, très patient, très heureux.",
+          "L'open space n'existe plus. On ne pose pas de questions, on refait les cloisons."
+        ]
+      }
+    }
+  ],
+  "manche1": [
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "Les conditions de traitement des données du questionnaire d'inscription à Z'amours and Go : est-ce que … les a lues ?",
+      "note": "",
+      "opts": [
+        "Il a tout lu, ligne par ligne, comme un juriste.",
+        "Il a cliqué « J'accepte » et vendu son âme à l'entreprise."
+      ],
+      "sponsor": null
+    },
+    {
+      "type": "spotlight",
+      "pts": 2,
+      "q": "Si … était un animal, ce serait lequel ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "Quel est le Disney préféré de … ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "spotlight",
+      "pts": 2,
+      "q": "Tout est parfait chez …, sauf ce minuscule défaut qui rend son partenaire barjot. Lequel ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "Si … ne pouvait garder qu'un seul emoji pour le reste de sa vie, ce serait lequel ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "spotlight",
+      "pts": 2,
+      "q": "C'est quoi LE truc qu'il faut faire pour mettre … hors de lui ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "Quelle est la date à laquelle … est censé ramener des viennoiseries au travail pour ses collègues adorés ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "spotlight",
+      "pts": 2,
+      "q": "… doit inventer un surnom pour son partenaire, là, maintenant, devant tout le monde. C'est quoi ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "S'il n'y avait qu'UN seul plat que … pouvait manger pour le reste de sa vie, ce serait lequel ?",
+      "note": "",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "eclair",
+      "pts": 1,
+      "q": "Quelle appli … ouvre en premier le matin ?",
+      "note": "On vérifie sur le téléphone.",
+      "opts": [],
+      "sponsor": null
+    },
+    {
+      "type": "spotlight",
+      "pts": 2,
+      "q": "C'est quoi le fond d'écran du téléphone de … ?",
+      "note": "On vérifie en direct.",
+      "opts": [],
+      "sponsor": null
+    }
+  ],
+  "categories": [
+    {
+      "id": "bouffe",
+      "label": "🍔 Bouffe",
+      "qcm": false,
+      "questions": [
+        {
+          "q": "Qu'est-ce que … mange debout devant le frigo, sans assiette, quand il rentre du boulot ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Au resto, il y a un plat que … ne commandera jamais, même si c'est offert. Lequel ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est l'apocalypse zombie, il ne reste qu'un seul type de plat sur terre. Lequel est indispensable à la survie mentale de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "… devient soudainement végétarien ou carnivore : c'est quoi LE plat qui lui manque le plus ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel est le plat que … cuisine le mieux ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le plat que … réclame toujours quand on commande à plusieurs au bureau ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel est le plat que … rate systématiquement, malgré toutes ses tentatives ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Il reste UNE part de gâteau dans la cuisine du bureau, sans nom dessus. Que fait … ?",
+          "opts": [
+            "Elle a déjà disparu. Personne ne l'a vu faire.",
+            "Il tourne autour toute la journée, et la prend à 17h en disant « bon, sinon elle va se perdre ».",
+            "Il n'y touche pas — mais il en parle à trois personnes."
+          ],
+          "sponsor": null
+        }
+      ]
+    },
+    {
+      "id": "boulot",
+      "label": "💼 Boulot",
+      "qcm": false,
+      "questions": [
+        {
+          "q": "Quelle est la feature que … réclame plus que tout dans l'app ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Combien de temps est-ce que … met pour arriver au boulot ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quand … était petit, c'était quoi son métier de rêve ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Qu'est-ce qu'il y a dans le mug de … là, tout de suite ? (on vérifie)",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le premier truc que … fait en arrivant au bureau, avant même de s'asseoir ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Qu'est-ce que … fait vraiment pendant les réunions où il n'a rien à dire ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel est le raccourci clavier que … utilise le plus ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Si … devait former son remplaçant en une seule phrase, ce serait laquelle ?",
+          "opts": [],
+          "sponsor": null
+        }
+      ]
+    },
+    {
+      "id": "manies",
+      "label": "🤪 Manies",
+      "qcm": false,
+      "questions": [
+        {
+          "q": "Quel est le pire tic ou la pire manie de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel est le talent le plus inutile de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Si on devait ne garder qu'une seule phrase de … pour la postérité, ce serait quoi ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le pire truc que … possède chez lui ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Est-ce que parfois … renifle ses vêtements avant de décider s'ils sont encore propres ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel bruit … fait sans s'en rendre compte quand il se concentre ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le truc que … perd systématiquement ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le mot ou l'expression que … place dans absolument toutes ses phrases ?",
+          "opts": [],
+          "sponsor": null
+        }
+      ]
+    },
+    {
+      "id": "vieperso",
+      "label": "🏠 Vie perso",
+      "qcm": false,
+      "questions": [
+        {
+          "q": "Combien de réveils … met le matin sur son téléphone ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi la position préférée de … ? — Pour DORMIR, bande d'obsédés !",
+          "opts": [
+            "Sur le dos",
+            "Sur le ventre",
+            "Une manière encore plus étrange"
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi la pointure de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Selon …, c'est quoi votre meilleure sortie ensemble ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quelle est la dernière chose que … a achetée et dont il n'avait absolument aucun besoin ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi la plus grosse insulte que … ait vociférée à son partenaire ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "En moyenne, combien de cacas est-ce que … fait par jour ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Selon …, c'est quoi votre point commun le plus improbable ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel est le plaisir coupable de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Si … gagnait au loto, quel serait son premier achat ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Comment s'appelle le père de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Comment s'appelle la mère de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "S'il fallait absolument choisir : … perd la vue, ou … perd l'audition ?",
+          "opts": [],
+          "sponsor": {
+            "by": "l'Association des Personnes Handicapées",
+            "fine": "Vos réponses seront enregistrées et transmises."
+          }
+        }
+      ]
+    },
+    {
+      "id": "culture",
+      "label": "🎬 Culture / Loisirs",
+      "qcm": false,
+      "questions": [
+        {
+          "q": "Quelle chanson … chante à tue-tête quand personne (croit-il/elle) n'écoute ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel super-pouvoir … aimerait-il/elle avoir ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quel film fait pleurer … à tous les coups ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le plus gros crush célébrité de … ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'était quoi le style de musique préféré de … au collège ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "C'est quoi le film que … a vu un nombre déraisonnable de fois ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Quelle série … a abandonnée en plein milieu sans jamais la finir ?",
+          "opts": [],
+          "sponsor": null
+        },
+        {
+          "q": "Si … devait monter sur scène pour un karaoké là, maintenant, ce serait quoi ?",
+          "opts": [],
+          "sponsor": null
+        }
+      ]
+    },
+    {
+      "id": "scenarios",
+      "label": "🎭 Scénarios",
+      "qcm": true,
+      "questions": [
+        {
+          "q": "Une publicité pour un club BDSM tombe de la poche de …",
+          "opts": [
+            "Il essaie d'expliquer en panique que c'est un tract qu'on lui a donné dans la rue et qu'il n'a pas réussi à dire non.",
+            "Il la remet dans sa poche le plus naturellement du monde.",
+            "Il te la tend en disant qu'il l'a vue et qu'il a pensé à toi."
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "Il est 17h55 un vendredi. Une erreur 500 critique apparaît sur la prod d'EvalandGo. Que fait … ?",
+          "opts": [
+            "Il accuse immédiatement Steven ou le client d'exagérer, et part se cacher dans les toilettes jusqu'à 18h.",
+            "Il enfile sa cape et part à la rescousse de l'application et de ses clients, quitte à partir à 19h et laisser ses enfants rentrer seuls.",
+            "Il passe Google Chat en « occupé », met son manteau et part vite fait avant que l'info se propage : « ça, c'est un problème pour le moi de lundi 🙂 »."
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "En plein afterwork, le serveur trébuche et renverse une pinte de bière et une planche de jambon sur ….",
+          "opts": [
+            "Il rit très fort pendant 5 minutes. Ça va devenir son moment préféré de sa LIFE.",
+            "Le déni : il reste assis toute la soirée dans son jus comme si de rien n'était. C'est le pire moment de sa LIFE.",
+            "Le scandale : il exige de parler au manager et négocie le repas gratuit pour toute la table. C'est le moment préféré de sa LIFE++."
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "… vient d'envoyer un mail avec une énorme faute dans l'objet. À TOUTE la boîte.",
+          "opts": [
+            "Second mail immédiat : « désolé, [correction] » — et aggrave le carnage.",
+            "Rien. Silence total. Si personne n'en parle, ça n'a jamais existé.",
+            "Il en fait une blague avant que quelqu'un d'autre le fasse. Attaque préventive."
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "On est en plein Z'amours and Go. On vient de révéler que … s'est complètement planté sur son partenaire.",
+          "opts": [
+            "Mauvaise foi absolue : « non mais attends, c'est FAUX ça. »",
+            "Il s'excuse platement, sincèrement touché d'avoir eu faux.",
+            "Il retourne la faute : « ouais bah tu me l'as jamais dit non plus. »"
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "La réunion devait finir à 12h30. Le client lance « juste une dernière petite question ».",
+          "opts": [
+            "Il répond consciencieusement et sort à 13h15, le ventre vide et l'âme morte.",
+            "Il range ses affaires très bruyamment tout en soutenant visuellement qu'il écoute.",
+            "« Excellente question, je te fais un retour par mail cet aprem. » Il est dehors à 12h31."
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "… est en visio. Il croit son micro coupé. Il ne l'est pas.",
+          "opts": [
+            "Il continue de parler pendant 30 secondes avant que quelqu'un ose l'interrompre.",
+            "Il coupe net, quitte la réunion, revient dix secondes plus tard en accusant sa connexion.",
+            "Il assume totalement : « bah oui, je le pense aussi à voix haute. »"
+          ],
+          "sponsor": null
+        },
+        {
+          "q": "Il est 19h30. … est le dernier au bureau.",
+          "opts": [
+            "Il éteint tout, ferme derrière lui et part sans un bruit. Personne ne saura jamais.",
+            "Il met la musique à fond et enchaîne 40 minutes de plus. C'est son meilleur moment de la semaine.",
+            "Il poste un message dans le chat d'équipe pour que ça se sache bien."
+          ],
+          "sponsor": null
+        }
+      ]
+    }
+  ],
+  "manche3": [
+    {
+      "q": "Le même chiffre entre 1 et 5"
+    },
+    {
+      "q": "La même couleur"
+    },
+    {
+      "q": "Le même animal"
+    },
+    {
+      "q": "Le même fruit"
+    },
+    {
+      "q": "La même saison"
+    },
+    {
+      "q": "Le même jour de la semaine"
+    },
+    {
+      "q": "La même boisson chaude"
+    },
+    {
+      "q": "Le même moyen de transport"
+    },
+    {
+      "q": "Le même emoji"
+    },
+    {
+      "q": "La même pièce de la maison"
+    },
+    {
+      "q": "Le même pays"
+    },
+    {
+      "q": "Le même plat à commander à deux"
+    },
+    {
+      "q": "Le même chiffre entre 1 et 10"
+    },
+    {
+      "q": "Le même film"
+    },
+    {
+      "q": "Le même mot pour décrire Ludo"
+    },
+    {
+      "q": "Le même mot pour décrire votre duo"
+    }
+  ]
+};
+
+/* Modèle vide : la même structure, sans contenu. */
+const PACK_VIDE = {
+  version: 1,
+  meta: { nom: "Ma partie", sousTitre: "", auteur: "" },
+  reglages: { m2Tours: 3, m3Coeurs: 3, chrono: 20 },
+  duos: [],
+  manche1: [],
+  categories: [],
+  manche3: []
+};
+
+/* ===================== PACK ACTIF ET VUES DÉRIVÉES =====================
+   Le pack est la SEULE source de vérité : chaque question y porte ses
+   propres options de QCM, ce qui rend impossible le décalage silencieux
+   qu'on avait avec une table d'options indexée à part.
+   Le moteur d'écrans lit les vues ci-dessous, reconstruites à chaque
+   changement de pack. ===================================================== */
+
+const PACK_KEY = "zamours-pack-v1";
+
+let PACK, DUOS, M1, M3, M2_TOURS, M2_CATS, M2_POINTS, M3_LIVES, CHRONO;
+
+function appliquerPack(pk) {
+  PACK = pk;
+  DUOS = PACK.duos;
+  M1   = PACK.manche1;
+  M3   = PACK.manche3.map(x => x.q);
+  const r = PACK.reglages || {};
+  M2_TOURS  = Math.max(1, r.m2Tours || 3);
+  M2_CATS   = M2_TOURS - 1;
+  M2_POINTS = 3 + M2_CATS * 2;
+  M3_LIVES  = Math.max(1, r.m3Coeurs || 3);
+  CHRONO    = Math.max(5, r.chrono || 20);
+  // un chrono modifié dans l'éditeur doit se voir tout de suite en jeu
+  if (typeof S !== "undefined" && S && !S.tRunning) S.tLeft = CHRONO;
+}
+
+function categorieParId(id) { return PACK.categories.find(c => c.id === id); }
+function jokerDe(duo) { return (duo && duo.joker) || { gag: "", q: "", opts: [] }; }
+function m2StepLabel(k) { return k === 0 ? "Joker" : "Catégorie " + k + "/" + M2_CATS; }
+
+/* --- stockage du pack, séparé de l'état de partie --- */
+
+function chargerPack() {
+  try {
+    const brut = localStorage.getItem(PACK_KEY);
+    if (brut) {
+      const pk = JSON.parse(brut);
+      if (pk && pk.version) { appliquerPack(normaliserPack(pk)); return true; }
+    }
+  } catch (e) {}
+  return false;
+}
+
+function sauverPack() {
+  try { localStorage.setItem(PACK_KEY, JSON.stringify(PACK)); return true; }
+  catch (e) { return false; }
+}
+
+/* Remplit les champs manquants : un pack importé peut venir d'une autre
+   version ou avoir été écrit à la main. */
+function normaliserPack(pk) {
+  const q = o => ({
+    q: String(o && o.q || ""),
+    opts: Array.isArray(o && o.opts) ? o.opts.filter(x => String(x || "").trim()).map(String) : [],
+    note: String(o && o.note || ""),
+    sponsor: (o && o.sponsor && o.sponsor.by) ? { by: String(o.sponsor.by), fine: String(o.sponsor.fine || "") } : null
+  });
+  return {
+    version: pk.version || 1,
+    meta: Object.assign({ nom: "Ma partie", sousTitre: "", auteur: "" }, pk.meta || {}),
+    reglages: Object.assign({ m2Tours: 3, m3Coeurs: 3, chrono: 20 }, pk.reglages || {}),
+    duos: (pk.duos || []).map((d, i) => ({
+      id: String(d.id || ("d" + i)), a: String(d.a || ""), b: String(d.b || ""),
+      joker: Object.assign({ gag: "", q: "", opts: [] }, q(d.joker || {}), { gag: String((d.joker || {}).gag || "") })
+    })),
+    manche1: (pk.manche1 || []).map(x => Object.assign(q(x), {
+      type: x.type === "spotlight" ? "spotlight" : "eclair",
+      pts: Number(x.pts) > 0 ? Number(x.pts) : 1
+    })),
+    categories: (pk.categories || []).map((c, i) => ({
+      id: String(c.id || ("c" + i)), label: String(c.label || "Catégorie"), qcm: !!c.qcm,
+      questions: (c.questions || []).map(q)
+    })),
+    manche3: (pk.manche3 || []).map(q)
+  };
+}
+
+/* --- validation : empêche de lancer une partie incohérente --- */
+
+function validerPack(pk) {
+  const e = [];
+  if (pk.duos.length < 2) e.push("Il faut au moins 2 duos.");
+  pk.duos.forEach(d => {
+    if (!d.a.trim() || !d.b.trim()) e.push("Un duo n'a pas ses deux prénoms.");
+    if (!d.joker.q.trim()) e.push(`${d.a} & ${d.b} n'a pas de question Joker.`);
+  });
+  if (!pk.manche1.length) e.push("La Manche 1 n'a aucune question.");
+  const cats = pk.categories.filter(c => c.questions.length);
+  if (cats.length < 1) e.push("Il faut au moins une catégorie avec des questions.");
+  const besoin = pk.duos.length * (Math.max(1, pk.reglages.m2Tours) - 1);
+  const dispo = cats.reduce((t, c) => t + c.questions.length, 0);
+  if (besoin > dispo) e.push(`Manche 2 : ${besoin} questions seront tirées mais la banque n'en contient que ${dispo}.`);
+  if (!pk.manche3.length) e.push("La Manche 3 n'a aucune consigne.");
+  return e;
+}
+
+const duoName = d => d.a + " & " + d.b;
+const byId = id => DUOS.find(d => d.id === id);
+
+// Cible = celui qui écrit la vraie réponse. Tirée au sort au départ,
+// puis alternée automatiquement à chaque question (i = index de question).
+function cibleSide(d, i) {
+  const base = (S.cible && S.cible[d.id]) === "b" ? 1 : 0;
+  return (base + (i || 0)) % 2 === 0 ? "a" : "b";
+}
+
+function cibleName(d, i) { return cibleSide(d, i) === "a" ? d.a : d.b; }
+function devineurName(d, i) { return cibleSide(d, i) === "a" ? d.b : d.a; }
+
+// « … » désigne la cible. En Manche 2 un seul duo joue : on écrit son prénom
+// en toutes lettres. En Manche 1 les 6 duos ont chacun leur cible, on garde le
+// repère mais on le surligne comme le prénom dans la pastille, pour que le lien
+// soit visuel et non à deviner.
+function qText(t, name) {
+  const marque = name ? esc(name) : "…";
+  return esc(t).split("…").join(`<span class="ph">${marque}</span>`);
+}
+
+// bandeau des rôles, affiché juste sous la question
+function rolesBand(d, i, qcm) {
+  // sur un QCM il n'y a pas de rôles à départager, et la règle est déjà
+  // portée par l'étiquette en haut et par la ligne d'attribution en bas
+  if (qcm) return "";
+  if (!d) return `<div class="roles"><span class="ph">Le prénom surligné</span> écrit <b>sa</b> vraie réponse sur l'ardoise · l'autre doit deviner ce qui y est écrit</div>`;
+  return `<div class="roles"><b>${esc(cibleName(d, i))}</b> écrit <b>sa</b> vraie réponse sur l'ardoise · `
+       + `<b>${esc(devineurName(d, i))}</b> doit deviner ce qui y est écrit</div>`;
+}
+
+// Nom du duo avec la cible mise en avant
+function duoNameCible(d, i) {
+  const t = cibleSide(d, i);
+  const a = `<span class="${t === "a" ? "target" : "other"}">${esc(d.a)}</span>`;
+  const b = `<span class="${t === "b" ? "target" : "other"}">${esc(d.b)}</span>`;
+  return `${a} <span class="amp">&amp;</span> ${b}`;
+}
+
+// Manche 1 — ordre de passage alterné
+
+/* ============================ ÉTAT ============================ */
+
+const KEY = "zamours-console-v4";
+let S;
+
+// Remet un état chargé en cohérence avec la liste de duos ACTUELLE.
+// Sans ça, une partie sauvegardée qui cite un duo retiré du fichier fait
+// planter le rendu au chargement (m2duo() renvoie undefined).
+function hydrate(st) {
+  const ids = new Set(DUOS.map(d => d.id));
+  st.eliminated = (st.eliminated || []).filter(i => ids.has(i));
+  st.m2order    = (st.m2order    || []).filter(i => ids.has(i));
+  st.finalists  = (st.finalists  || []).filter(i => ids.has(i));
+
+  st.cible = st.cible || {};
+  DUOS.forEach(d => {
+    if (st.cible[d.id] !== "a" && st.cible[d.id] !== "b") st.cible[d.id] = Math.random() < .5 ? "a" : "b";
+    if (typeof st.m1[d.id] !== "number") st.m1[d.id] = 0;
+  });
+
+  st.m2i   = Math.max(0, Math.min(st.m2i   || 0, st.m2order.length - 1));
+  st.m1i   = Math.max(0, Math.min(st.m1i   || 0, M1.length - 1));
+  st.m2step = Math.max(0, Math.min(st.m2step || 0, M2_TOURS - 1));
+
+  // un écran devenu impossible : on revient au titre plutôt que de planter
+  if (st.screen === "m2"  && st.m2order.length === 0)  st.screen = "title";
+  if (st.screen === "m3"  && st.finalists.length !== 2) st.screen = "title";
+  if (!SCREENS[st.screen]) st.screen = "title";
+  return st;
+}
+
+function freshState() {
+  const z = {};
+  DUOS.forEach(d => z[d.id] = 0);
+  const c = {};
+  DUOS.forEach(d => c[d.id] = Math.random() < .5 ? "a" : "b");
+  return {
+    screen: "title",
+    cible: c,
+    m1i: 0, m1: z, m1marks: {},
+    eliminated: [],
+    m2order: [], m2i: 0, m2step: 0, m2cat: {}, m2drawn: {}, m2used: {}, m2: {}, m2marks: {},
+    finalists: [], m3i: 0, m3: {}, m3marks: {}, m3revealed: false,
+    sudden: false, suddenWinner: null,
+    resumed: false,
+    revealCount: 0,
+    tStart: null, tLeft: CHRONO, tRunning: false,
+    panel: false
+  };
+}
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && p.screen) {
+        S = hydrate(Object.assign(freshState(), p));
+        S.tRunning = false;
+        return true;
+      }
+    }
+  } catch (e) {}
+  S = freshState();
+  return false;
+}
+
+/* ============================ TIMER ============================ */
+
+let tick = null;
+
+function startTimer() {
+  if (S.tRunning) { stopTimer(); return; }
+  if (S.tLeft <= 0) S.tLeft = CHRONO;
+  S.tRunning = true;
+  S.tStart = Date.now();
+  const base = S.tLeft;
+  clearInterval(tick);
+  tick = setInterval(() => {
+    const left = base - (Date.now() - S.tStart) / 1000;
+    S.tLeft = Math.max(0, left);
+    if (S.tLeft <= 0) { S.tRunning = false; clearInterval(tick); tick = null; }
+    paintTimer();
+  }, 90);
+  render();
+}
+
+function stopTimer() {
+  S.tRunning = false;
+  clearInterval(tick);
+  tick = null;
+  render();
+}
+
+function resetTimer() {
+  S.tRunning = false;
+  S.tLeft = CHRONO;
+  clearInterval(tick);
+  tick = null;
+}
+
+function paintTimer() {
+  const c = document.getElementById("count");
+  const bar = document.getElementById("tbar");
+  const ring = document.getElementById("ring");
+  if (!c) return;
+  const v = Math.ceil(S.tLeft);
+  c.textContent = v;
+  const urgent = S.tLeft <= 5 && S.tLeft > 0;
+  c.className = "count" + (urgent ? " urgent" : (S.tLeft <= 0 ? " done" : ""));
+  if (ring) ring.setAttribute("class", "ring" + (urgent ? " urgent" : ""));
+  if (bar) {
+    const CIRC = 2 * Math.PI * 30;
+    bar.style.strokeDasharray = CIRC;
+    bar.style.strokeDashoffset = CIRC * (1 - S.tLeft / 20);
+  }
+}
+
+/* ============================ HELPERS ============================ */
+
+const esc = s => String(s).replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+function alive() { return DUOS.filter(d => !S.eliminated.includes(d.id)); }
+
+function rank(scores, pool) {
+  return pool.slice().sort((x, y) => (scores[y.id] || 0) - (scores[x.id] || 0));
+}
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function timerBlock() {
+  return `<div class="timerwrap">
+    <svg class="ring" id="ring" viewBox="0 0 74 74" aria-hidden="true">
+      <circle class="track" cx="37" cy="37" r="30"></circle>
+      <circle class="bar" id="tbar" cx="37" cy="37" r="30"></circle>
+    </svg>
+    <div class="count" id="count">${Math.ceil(S.tLeft)}</div>
+    <div class="subline" style="max-width:26ch">Les cibles écrivent.<br>20 secondes, feutres en l'air à la fin.</div>
+  </div>`;
+}
+
+/* ============================ RENDU ============================ */
+
+function render() {
+  const top = document.getElementById("rail-top");
+  const stage = document.getElementById("stage");
+  const bot = document.getElementById("rail-bottom");
+  const fns = SCREENS[S.screen] || SCREENS.title;
+  top.innerHTML = fns.top ? fns.top() : "";
+  stage.innerHTML = fns.stage();
+  bot.innerHTML = fns.bottom ? fns.bottom() : "";
+  document.getElementById("panel").innerHTML = panelHTML();
+  document.getElementById("panel").classList.toggle("open", !!S.panel);
+  bindAll();
+  paintTimer();
+  save();
+  const wait = maybeSplash();
+  const wait2 = maybeAnnounce(wait);
+  const wait3 = maybeFlash(wait);
+  const wait4 = maybeHeartBreak();
+  maybeVictory(wait4);
+  appliquerRevelation();
+  maybeSponsor(Math.max(wait, wait2, wait3, wait4));
+}
+
+
+/* ================= RÉVÉLATION D'UNE QUESTION =================
+   Chaque nouvelle question s'ouvre : la bulle arrive, puis le texte
+   se dévoile de gauche à droite. L'animation ne se rejoue jamais sur
+   un simple re-rendu (point attribué, option révélée, panneau ouvert) :
+   elle est conditionnée à l'identité de la question affichée.
+
+   Le faux départ d'un Joker emprunte exactement la même entrée, puis
+   se fait barrer et détruire avant de céder la place à la vraie
+   question — qui se révèle à son tour.
+   ============================================================= */
+
+const REVEAL_MS = 800;    // durée de la révélation
+const GAG_HOLD  = 3000;   // temps de lecture du faux départ, après la révélation
+const GAG_RAYE  = 520;    // tracé du trait
+const GAG_CASSE = 620;    // dislocation du texte
+
+let derniereQuestion = null;
+let gagTimers = [];
+const gagFait = {};       // faux départs déjà joués, pour ne pas les rejouer
+
+// Identité de la question affichée. Change => on rejoue la révélation.
+function cleQuestion() {
+  if (S.screen === "m1") return "m1|" + S.m1i;
+  if (S.screen === "m3") return "m3|" + S.m3i + (S.sudden ? "|s" : "");
+  if (S.screen === "m2") {
+    const d = m2duo();
+    if (!d) return null;
+    if (S.m2step === 0) {
+      const j = jokerDe(d);
+      const gag = !!(j.gag && j.gag.trim()) && !gagFait[d.id + "|joker"];
+      return d.id + "|joker" + (gag ? "|gag" : "");
+    }
+    const rk = d.id + "-r" + S.m2step;
+    if (!S.m2cat[rk]) return null;          // écran de choix de thème
+    return rk + "|" + S.m2drawn[rk];
+  }
+  return null;
+}
+
+// Quand un overlay précède (annonce de duo, transition Éclair, splash…),
+// la scène n'apparaît qu'après lui. La révélation doit attendre ce moment,
+// sinon elle se joue derrière l'overlay et personne ne la voit.
+function delaiScene() {
+  const st = document.getElementById("stage");
+  if (!st) return 0;
+  if (st.classList.contains("enter-late")) return 1550;
+  if (st.classList.contains("enter-break")) return 1150;
+  if (st.classList.contains("enter")) return 950;
+  if (st.classList.contains("enter-fast")) return 500;
+  return 0;
+}
+
+function appliquerRevelation() {
+  const k = cleQuestion();
+  if (k === null) { derniereQuestion = null; annulerGag(); return; }
+  if (k === derniereQuestion) return;
+  derniereQuestion = k;
+
+  const h1 = document.querySelector(".question");
+  if (!h1) return;
+  const d = delaiScene();
+  h1.style.setProperty("--qdelay", d + "ms");
+  h1.classList.remove("reveal");
+  void h1.offsetWidth;                      // redémarre l'animation
+  h1.classList.add("reveal");
+
+  annulerGag();
+  if (h1.classList.contains("is-gag")) planifierGag(h1, d);
+}
+
+function annulerGag() {
+  gagTimers.forEach(clearTimeout);
+  gagTimers = [];
+}
+
+function planifierGag(h1, delai) {
+  const d = m2duo();
+  if (!d) return;
+  const cle = d.id + "|joker";
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // le compte des 3 secondes ne démarre qu'une fois la question réellement lisible
+  const attente = still ? 1200 : (delai || 0) + REVEAL_MS + GAG_HOLD;
+
+  gagTimers.push(setTimeout(() => {
+    if (!h1.isConnected) return;
+    h1.classList.add("gag-raye");                    // 1. le trait se trace
+    gagTimers.push(setTimeout(() => {
+      if (!h1.isConnected) return;
+      h1.classList.add("gag-casse");                 // 2. le texte se disloque
+      gagTimers.push(setTimeout(() => {
+        gagFait[cle] = true;                         // 3. la vraie question prend sa place
+        render();
+      }, still ? 0 : GAG_CASSE));
+    }, still ? 0 : GAG_RAYE));
+  }, attente));
+}
+
+/* ---------- célébration du vainqueur ---------- */
+
+const VICTORY_MS = 4200;
+let victoryKey = null;
+let victoryTimer = null;
+
+function maybeVictory(delay) {
+  if (S.screen !== "end") { victoryKey = null; return 0; }
+  const r = endResult();
+  if (r.egalite) { victoryKey = null; return 0; }   // mort subite : rien à célébrer
+  if (victoryKey === r.win) return 0;
+  victoryKey = r.win;
+  if (delay) setTimeout(() => { if (victoryKey === r.win) playVictory(r); }, delay);
+  else playVictory(r);
+  return 0;
+}
+
+function playVictory(r) {
+  document.querySelectorAll(".victory").forEach(n => n.remove());
+  clearTimeout(victoryTimer);
+
+  const n = el(`<div class="victory" aria-hidden="true">
+      <canvas class="vc-canvas"></canvas>
+      <div class="vc-inner">
+        <div class="vc-word">Bravo !</div>
+        <div class="vc-name">${esc(r.win)}</div>
+        ${r.coeurs ? `<div class="vc-sub">${heartsLeft(r.coeurs)}</div>` : ""}
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  startConfetti(n.querySelector(".vc-canvas"));
+  victoryTimer = setTimeout(() => n.remove(), VICTORY_MS);
+}
+
+function heartsLeft(k) {
+  let h = "";
+  for (let i = 0; i < M3_LIVES; i++) h += `<span class="hp ${i < k ? "" : "lost"}">♥</span>`;
+  return h + ` <span class="vc-cnt">${k} cœur${k > 1 ? "s" : ""} au compteur</span>`;
+}
+
+/* Pluie de cœurs : même technique que le champ de l'annonce — sprites
+   pré-rendus, canvas en résolution réduite — mais avec de la physique
+   (vitesse, gravité, rotation) et beaucoup moins de particules. */
+function startConfetti(cv) {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  const RES = .62;
+  cv.width = Math.round(W * RES); cv.height = Math.round(H * RES);
+  const ctx = cv.getContext("2d");
+  ctx.scale(RES, RES);
+
+  const couleurs = ["#E5231F", "#FFCE00", "#FFFFFF", "#FF6A5E", "#1E56A0"];
+  const tailles = [14, 20, 27];
+  const sprites = [];
+  couleurs.forEach(c => tailles.forEach(t => sprites.push({ img: heartSprite(t * 2, 1, c), s: t })));
+
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const parts = [];
+  for (let i = 0; i < 130; i++) {
+    const sp = sprites[(Math.random() * sprites.length) | 0];
+    const depuisLeBas = i % 3 === 0;   // un tiers jaillit du bas, le reste pleut
+    parts.push({
+      x: depuisLeBas ? W * (.3 + Math.random() * .4) : Math.random() * W,
+      y: depuisLeBas ? H + 30 : -Math.random() * H * .9 - 20,
+      vx: depuisLeBas ? (Math.random() - .5) * 7 : (Math.random() - .5) * 1.6,
+      vy: depuisLeBas ? -(9 + Math.random() * 6) : 1.5 + Math.random() * 2.5,
+      rot: Math.random() * 6.28,
+      vr: (Math.random() - .5) * .16,
+      sp: sp
+    });
+  }
+
+  let last = performance.now();
+  const t0 = last;
+
+  function frame(now) {
+    if (!cv.isConnected) return;
+    const dt = Math.min(2.4, (now - last) / 16.67);
+    last = now;
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (!still) {
+        p.vy += .22 * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.vr * dt;
+        if (p.y > H + 40) { p.y = -30; p.vy = 1.5 + Math.random() * 2.5; p.x = Math.random() * W; }
+      }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.drawImage(p.sp.img, -p.sp.s / 2, -p.sp.s / 2, p.sp.s, p.sp.s);
+      ctx.restore();
+    }
+    if (!still && now - t0 < VICTORY_MS) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- destruction d'un cœur (Manche 3) ---------- */
+
+const HBREAK_MS = 1700;
+let hbreakPending = null;
+let hbreakTimer = null;
+
+// Capture les duos qui viennent de rater AVANT que la question change.
+function queueHeartBreak() {
+  if (S.screen !== "m3") return;
+  const perdants = S.finalists.filter(id => m3Failed(id));
+  if (!perdants.length) return;
+  hbreakPending = perdants.map(id => ({
+    nom: duoName(byId(id)),
+    reste: m3Lives(id)
+  }));
+}
+
+function maybeHeartBreak() {
+  if (!hbreakPending) return 0;
+  const p = hbreakPending;
+  hbreakPending = null;
+  playHeartBreak(p);
+  return HBREAK_MS - 250;
+}
+
+function playHeartBreak(perdants) {
+  document.querySelectorAll(".hbreak").forEach(n => n.remove());
+  clearTimeout(hbreakTimer);
+
+  const demiCoeur = cote => `<svg class="hb-${cote}" viewBox="0 0 100 92"><path d="${HEART}"/></svg>`;
+
+  const n = el(`<div class="hbreak" aria-hidden="true">
+      <div class="hb-inner">
+        <div class="hb-word">Crac !</div>
+        <div class="hb-duos">
+          ${perdants.map(d => `
+            <div class="hb-duo">
+              <div class="hb-shatter">${demiCoeur("l")}${demiCoeur("r")}</div>
+              <div class="hb-name">${esc(d.nom)}</div>
+              <div class="hb-left">${d.reste === 0
+                  ? "plus aucun cœur — éliminé"
+                  : d.reste + " cœur" + (d.reste > 1 ? "s" : "") + " restant" + (d.reste > 1 ? "s" : "")}</div>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  hbreakTimer = setTimeout(() => n.remove(), HBREAK_MS);
+
+  const stage = document.getElementById("stage");
+  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break");
+  void stage.offsetWidth;
+  stage.classList.add("enter-break");
+}
+
+/* ---------- transition entre deux questions de la Manche 1 ---------- */
+
+const FLASH_MS = 1150;
+let resetArmed = false;
+let resetTimerId = null;
+
+let flashKey = null;
+let flashTimer = null;
+
+function maybeFlash(delay) {
+  if (S.screen !== "m1") { flashKey = null; return 0; }
+  const key = "m1-" + S.m1i;
+  if (key === flashKey) return 0;   // point attribué, option révélée : pas de rejeu
+  flashKey = key;
+  if (delay) setTimeout(() => { if (flashKey === key) playFlash(); }, delay);
+  else playFlash();
+  return (delay || 0) + FLASH_MS - 200;
+}
+
+function playFlash() {
+  const q = M1[S.m1i];
+  if (!q) return;
+  const isE = q.type === "eclair";
+
+  document.querySelectorAll(".flash").forEach(n => n.remove());
+  clearTimeout(flashTimer);
+
+  const n = el(`<div class="flash ${isE ? "eclair" : "spot"}" aria-hidden="true">
+      <div class="fl-rays"></div>
+      <div class="fl-inner">
+        <div class="fl-badge">${isE ? "⚡ Éclair" : "🔦 Spotlight"}</div>
+        <div class="fl-rule">${isE ? "tout le monde révèle en même temps"
+                                   : "on révèle duo par duo"}</div>
+        <div class="fl-num">Question ${S.m1i + 1}/${M1.length} · ${q.pts} point${q.pts > 1 ? "s" : ""}</div>
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  flashTimer = setTimeout(() => n.remove(), FLASH_MS);
+
+  const stage = document.getElementById("stage");
+  stage.classList.remove("enter", "enter-late", "enter-fast");
+  void stage.offsetWidth;
+  stage.classList.add("enter-fast");
+}
+
+/* ---------- bandeau sponsor (gag TV avant certaines questions) ---------- */
+
+const SPONSOR_MS = 2600;
+let sponsorKey = null;
+let sponsorTimer = null;
+
+// renvoie { key, by, fine } si la question affichée a un sponsor
+function currentSponsor() {
+  if (S.screen === "m1") {
+    const q = M1[S.m1i];
+    return q && q.sponsor ? Object.assign({ key: "m1-" + S.m1i }, q.sponsor) : null;
+  }
+  if (S.screen === "m2" && S.m2step > 0) {
+    const d = m2duo();
+    if (!d) return null;
+    const rk = d.id + "-r" + S.m2step;
+    const catKey = S.m2cat[rk];
+    if (!catKey) return null;
+    const cat = categorieParId(catKey);
+    if (!cat) return null;
+    const item = cat.questions[S.m2drawn[rk]];
+    const sp = item && item.sponsor;
+    return sp ? Object.assign({ key: rk + "-" + S.m2drawn[rk] }, sp) : null;
+  }
+  return null;
+}
+
+function maybeSponsor(delay) {
+  const sp = currentSponsor();
+  if (!sp) { sponsorKey = null; return; }
+  if (sp.key === sponsorKey) return;
+  sponsorKey = sp.key;
+  if (delay) setTimeout(() => { if (sponsorKey === sp.key) playSponsor(sp); }, delay);
+  else playSponsor(sp);
+}
+
+function playSponsor(sp) {
+  document.querySelectorAll(".sponsor").forEach(n => n.remove());
+  clearTimeout(sponsorTimer);
+  const n = el(`<div class="sponsor" aria-hidden="true">
+      <div class="sp-card">
+        <div class="sp-pre">Cette question vous est présentée par</div>
+        <div class="sp-by">${esc(sp.by)}</div>
+        <div class="sp-fine">${esc(sp.fine)}</div>
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  sponsorTimer = setTimeout(() => n.remove(), SPONSOR_MS);
+}
+
+/* ---------- splash d'ouverture de manche ---------- */
+
+const SPLASH_MS = 2200;
+let lastScreen = null;
+let splashTimer = null;
+
+function roundMeta() {
+  if (S.screen === "m1rules") {
+    const pts = M1.reduce((t, q) => t + q.pts, 0);
+    return { n: "1", t: "Qualifications", s: `${M1.length} questions · ${pts} points en jeu` };
+  }
+  if (S.screen === "m2rules") return { n: "2", t: "Joker &amp; Catégories", s: "Tout le monde repart de zéro · " + M2_POINTS + " points par duo" };
+  if (S.screen === "m3rules") return { n: "3", t: "Longueur d'onde", s: `${M3_LIVES} cœurs par duo · le dernier debout gagne` };
+  return null;
+}
+
+// Retourne le délai à respecter avant l'annonce de duo (0 si pas de splash)
+function maybeSplash() {
+  if (S.screen === lastScreen) return 0;
+  lastScreen = S.screen;
+  const m = roundMeta();
+  if (!m) return 0;
+  playSplash(m);
+  return SPLASH_MS - 300;   // l'annonce enchaîne pendant que le splash s'efface
+}
+
+const HEART = "M50 88C20 66 2 47 2 30 2 14 14 4 27 4c10 0 18 6 23 14 5-8 13-14 23-14 13 0 25 10 25 26 0 17-18 36-48 58Z";
+
+function playSplash(m) {
+  document.querySelectorAll(".splash").forEach(n => n.remove());
+  clearTimeout(splashTimer);
+
+  const n = el(`<div class="splash" aria-hidden="true">
+      <div class="sp-inner">
+        <div class="sp-lead">Manche</div>
+        <div class="sp-num">
+          <svg class="sp-heart" viewBox="0 0 100 92">
+            <defs>
+              <linearGradient id="hg" x1="0" y1="0" x2=".25" y2="1">
+                <stop offset="0" stop-color="#FF6A5E"/>
+                <stop offset=".42" stop-color="#E5231F"/>
+                <stop offset="1" stop-color="#9C0D10"/>
+              </linearGradient>
+            </defs>
+            <path class="hk" d="${HEART}"/>
+            <path class="hf" d="${HEART}"/>
+            <ellipse class="hg2" cx="30" cy="26" rx="15" ry="10" transform="rotate(-32 30 26)"/>
+          </svg>
+          <span class="sp-n">${m.n}</span>
+        </div>
+        <div class="sp-title">${m.t}</div>
+        <div class="sp-sub">${esc(m.s)}</div>
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  splashTimer = setTimeout(() => n.remove(), SPLASH_MS);
+
+  const stage = document.getElementById("stage");
+  stage.classList.remove("enter", "enter-late");
+  void stage.offsetWidth;
+  stage.classList.add("enter-late");
+}
+
+/* ---------- annonce "maintenant c'est à …" (Manche 2) ---------- */
+
+const ANNOUNCE_MS = 1800;   // durée totale de l'animation — baisse-la si ça traîne
+let announceKey = null;
+let announceTimer = null;
+
+function maybeAnnounce(delay) {
+  if (S.screen !== "m2") { announceKey = null; return 0; }
+  const key = S.m2i + "-" + S.m2step;
+  if (key === announceKey) return 0;   // simple re-rendu (point, R, panneau) : pas de rejeu
+  announceKey = key;
+  if (delay) setTimeout(() => { if (announceKey === key) playAnnounce(); }, delay);
+  else playAnnounce();
+  return (delay || 0) + ANNOUNCE_MS - 250;
+}
+
+// Champ de cœurs façon trame, dessiné sur un canvas : à cette densité
+// (~1500 cœurs) un rendu DOM tombait à 15 fps, le canvas tient les 60.
+// La vague (.ann-sweep) balaie de -60vw à 120vw en 1,15 s ; chaque cœur
+// gonfle au moment précis où elle lui passe dessus.
+const HEART_PITCH = 30;                 // pas de la trame, en px
+const HEART_TILT  = 6 * Math.PI / 180;  // léger angle descendant
+const HEART_SWEEP = 1.15;
+
+function heartSprite(size, alpha, couleur) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const x = c.getContext("2d");
+  const u = size / 100;
+  x.fillStyle = couleur || ("rgba(255,255,255," + alpha + ")");
+  x.beginPath();
+  x.moveTo(50 * u, 88 * u);
+  x.bezierCurveTo(20 * u, 66 * u, 2 * u, 47 * u, 2 * u, 30 * u);
+  x.bezierCurveTo(2 * u, 14 * u, 14 * u, 4 * u, 27 * u, 4 * u);
+  x.bezierCurveTo(37 * u, 4 * u, 45 * u, 10 * u, 50 * u, 18 * u);
+  x.bezierCurveTo(55 * u, 10 * u, 63 * u, 4 * u, 73 * u, 4 * u);
+  x.bezierCurveTo(86 * u, 4 * u, 98 * u, 14 * u, 98 * u, 30 * u);
+  x.bezierCurveTo(98 * u, 47 * u, 80 * u, 66 * u, 50 * u, 88 * u);
+  x.closePath();
+  x.fill();
+  return c;
+}
+
+// profil d'un cœur : petit → gonflé au passage de la vague → légèrement retombé
+function heartWaveAt(lt) {
+  const D = .8;
+  if (lt <= 0) return [.55, .16];
+  if (lt >= D) return [.88, .27];
+  const p = lt / D;
+  if (p < .38) {
+    const e = 1 - Math.pow(1 - p / .38, 3);
+    return [.55 + e, .16 + .36 * e];
+  }
+  const e = 1 - Math.pow(1 - (p - .38) / .62, 3);
+  return [1.55 - .67 * e, .52 - .25 * e];
+}
+
+function startHeartField(cv) {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  // Texture de fond très transparente : on la rend à résolution réduite et
+  // le navigateur l'étire. Invisible à l'œil, ~3x moins de pixels à peindre.
+  const RES = .58;
+  cv.width = Math.round(W * RES); cv.height = Math.round(H * RES);
+  const ctx = cv.getContext("2d", { alpha: true });
+  ctx.scale(RES, RES);
+
+  const SP = 14;   // taille de base du cœur : nettement plus petite que le pas
+
+  // 24 états pré-rendus (taille ET opacité cuites dans le sprite) : chaque
+  // frame n'est plus qu'une recopie 1:1, sans redimensionnement ni changement
+  // d'alpha — c'est ce qui fait tenir les 60 fps à cette densité.
+  const STAGES = 24, WAVE_D = .8;
+  const sprites = [];
+  for (let k = 0; k < STAGES; k++) {
+    const [sc, al] = heartWaveAt(k / (STAGES - 1) * WAVE_D);
+    const px = Math.max(4, Math.round(SP * sc));
+    sprites.push({ img: heartSprite(px, al.toFixed(3)), s: px });
+  }
+
+  const cos = Math.cos(HEART_TILT), sin = Math.sin(HEART_TILT);
+  const cols = Math.ceil(W * 1.6 / HEART_PITCH);
+  const rows = Math.ceil(H * 1.6 / HEART_PITCH);
+  const ox = W / 2 - cols * HEART_PITCH / 2;
+  const oy = H / 2 - rows * HEART_PITCH / 2;
+
+  const pts = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const u = ox + (c + (r % 2 ? .5 : 0)) * HEART_PITCH - W / 2;
+      const v = oy + r * HEART_PITCH - H / 2;
+      const x = W / 2 + u * cos - v * sin;
+      const y = H / 2 + u * sin + v * cos;
+      if (x < -SP * 2 || x > W + SP * 2 || y < -SP * 2 || y > H + SP * 2) continue;
+      pts.push([x, y, (x / W * 100 + 37.5) / 180 * HEART_SWEEP]);
+    }
+  }
+
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const t0 = performance.now();
+
+  function frame(now) {
+    if (!cv.isConnected) return;
+    const t = still ? 99 : (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      let k = Math.round((t - p[2]) / WAVE_D * (STAGES - 1));
+      if (k < 0) k = 0; else if (k >= STAGES) k = STAGES - 1;
+      const sp = sprites[k];
+      ctx.drawImage(sp.img, (p[0] - sp.s / 2) | 0, (p[1] - sp.s / 2) | 0);
+    }
+    if (!still && t < HEART_SWEEP + 1.2) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function playAnnounce() {
+  const d = m2duo();
+  if (!d) return;
+  const step = S.m2step === 0 ? "🃏 Joker — 3 points" : "🗂️ " + m2StepLabel(S.m2step) + " — 2 points";
+
+  document.querySelectorAll(".announce").forEach(n => n.remove());
+  clearTimeout(announceTimer);
+
+  const n = el(`<div class="announce" aria-hidden="true">
+      <canvas class="ann-hearts"></canvas>
+      <div class="ann-sweep"></div>
+      <div class="ann-inner">
+        <div class="ann-lead">Maintenant, c'est à</div>
+        <div class="ann-who">${m2IsQcm() ? esc(duoName(d)) : duoNameCible(d, S.m2step)}</div>
+        <div class="ann-bar"></div>
+        <div class="ann-step">${esc(step)}</div>
+      </div>
+    </div>`);
+  document.body.appendChild(n);
+  startHeartField(n.querySelector(".ann-hearts"));
+  announceTimer = setTimeout(() => n.remove(), ANNOUNCE_MS);
+
+  const stage = document.getElementById("stage");
+  stage.classList.remove("enter", "enter-late");
+  void stage.offsetWidth;            // force le redémarrage de l'animation
+  stage.classList.add("enter");
+}
+
+function railBase(label, right) {
+  return `<div class="eyebrow">${label}</div>
+    <div class="spacer"></div>
+    ${right || ""}
+    <button class="btn ${resetArmed ? "primary" : "ghost"}" data-act="reset" title="Repartir de l'écran de titre" style="margin-right:8px">${resetArmed ? "Confirmer ?" : "⟲ Reset"}</button>
+    <button class="btn ghost" data-act="panel">Scores<kbd>S</kbd></button>`;
+}
+
+function pips(n, i) {
+  let h = '<div class="pips">';
+  for (let k = 0; k < n; k++) h += `<div class="pip ${k < i ? "done" : k === i ? "now" : ""}"></div>`;
+  return h + "</div>";
+}
+
+const SCREENS = {};
+
+/* ---------- titre ---------- */
+
+SCREENS.title = {
+  top: () => railBase("Pupitre animateur"),
+  stage: () => `
+    <h1 class="title-h1"><span class="t-z">Z'amours</span><span class="t-go">and&nbsp;Go</span></h1>
+    <div class="subline" style="max-width:56ch">
+      6 duos · 3 manches · <em>remise à zéro après la Manche 1</em>.<br>
+      Pilotage clavier : <kbd>→</kbd> avancer · <kbd>Espace</kbd> chrono · <kbd>R</kbd> révéler · <kbd>S</kbd> scores.
+    </div>
+    <div class="warn">Les points de la Manche 1 ne servent qu'à qualifier : tout le monde repart de zéro pour la Manche 2.</div>`,
+  bottom: () => `<button class="btn primary" data-act="go" data-to="m1rules">Commencer la Manche 1</button>
+    <button class="btn ghost" data-act="openresume" style="margin-left:10px">Reprendre en Manche 2</button>
+    <button class="btn ghost" data-act="openresume3" style="margin-left:10px">Reprendre en Manche 3</button>
+    <button class="btn ghost" data-act="openedit" style="margin-left:10px">✏️ Éditeur</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" data-act="reset">Repartir de zéro</button>`
+};
+
+/* ---------- manche 1 ---------- */
+
+SCREENS.m1 = {
+  top: () => railBase(`Manche 1 · Qualifications · <strong>Question ${S.m1i + 1}/${M1.length}</strong>`, pips(M1.length, S.m1i)),
+  stage: () => {
+    const q = M1[S.m1i];
+    const isE = q.type === "eclair";
+    const marks = S.m1marks[S.m1i] || {};
+    return `
+      <div class="kicker">
+        <span class="tag">${isE ? "⚡ Éclair" : "🔦 Spotlight"}</span>
+        <span>${q.pts} point${q.pts > 1 ? "s" : ""}</span>
+        <span style="color:var(--muted)">${isE ? "révélation simultanée — tout le monde en même temps" : "révélation duo par duo — on étire"}</span>
+      </div>
+      <h1 class="question ${qCls(q.q, qcmOpen(q.opts))}"><span class="qtxt">${qText(q.q)}</span></h1>
+      ${rolesBand(null, 0, !!q.opts)}
+      ${q.note ? `<div class="subline"><em>${esc(q.note)}</em></div>` : ""}
+      ${q.opts ? qcmBlock(q.opts) : ""}
+      ${timerBlock()}
+      <div>
+        <div class="eyebrow" style="margin-bottom:11px">Qui a matché ? — <span style="color:var(--amber)">le prénom souligné écrit sur l'ardoise, l'autre devine</span></div>
+        <div class="scorerow">
+          ${DUOS.map(d => `<button class="chip ${marks[d.id] ? "on" : ""}" data-act="m1mark" data-id="${d.id}">
+            <span class="mark">${marks[d.id] ? "✓" : ""}</span>${duoNameCible(d, S.m1i)}</button>`).join("")}
+        </div>
+      </div>`;
+  },
+  bottom: () => `
+    <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
+    <button class="btn ghost" data-act="treset">Remettre à 20</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" data-act="m1prev" ${S.m1i === 0 ? "disabled" : ""}>Précédente<kbd>←</kbd></button>
+    <button class="btn primary" data-act="m1next">${S.m1i === M1.length - 1 ? "Clore la Manche 1" : "Question suivante"}<kbd>→</kbd></button>`
+};
+
+/* ---------- reprise en Manche 2 (séance coupée en deux) ---------- */
+
+SCREENS.resume = {
+  top: () => railBase("Reprendre une partie · <strong>Manche 2</strong>"),
+  stage: () => `
+    <div class="kicker"><span class="tag">Reprise</span><span>désigne les duos qui se sont qualifiés lors de la séance précédente</span></div>
+    <div class="ranks">
+      ${DUOS.map(d => `<button class="rank ${S.m2order.includes(d.id) ? "picked qualif" : ""}" data-act="pickresume" data-id="${d.id}">
+        <span class="pos">${S.m2order.includes(d.id) ? "✓" : "·"}</span><span>${esc(duoName(d))}</span>
+        <span class="pts">${S.m2order.includes(d.id) ? "qualifié" : ""}</span></button>`).join("")}
+    </div>
+    <div class="subline">Les non-désignés deviennent le <em>Jury du Fail</em> et récupèrent les buzzers poulets.
+      Les scores de la Manche 2 repartent de zéro : inutile de ressaisir ceux de la Manche 1.</div>`,
+  bottom: () => `
+    <button class="btn ghost" data-act="go" data-to="title">Retour</button>
+    <div class="spacer"></div>
+    <span class="eyebrow" style="margin-right:14px">${S.m2order.length} duo${S.m2order.length > 1 ? "s" : ""} qualifié${S.m2order.length > 1 ? "s" : ""}</span>
+    <button class="btn primary" data-act="startresume" ${S.m2order.length < 2 ? "disabled" : ""}>Lancer la Manche 2<kbd>→</kbd></button>`
+};
+
+SCREENS.choix = {
+  top: () => `<div class="eyebrow">Bienvenue</div><div class="spacer"></div>`,
+  stage: () => `
+    <div class="kicker"><span class="tag">Premier lancement</span><span>sur quoi veux-tu partir ?</span></div>
+    <h1 class="question">Choisis ton point de départ</h1>
+    <div class="steps">
+      <button class="step" data-act="usepack" data-which="demo" style="cursor:pointer;text-align:left">
+        <div class="stepnum">1</div>
+        <h3>Le pack Z'amours</h3>
+        <p>${PACK_DEFAUT.duos.length} duos, ${PACK_DEFAUT.manche1.length} questions de Manche 1,
+           ${PACK_DEFAUT.categories.reduce((t, c) => t + c.questions.length, 0)} questions de catégories,
+           ${PACK_DEFAUT.manche3.length} consignes de finale. Tout est modifiable ensuite.</p>
+      </button>
+      <button class="step" data-act="usepack" data-which="vide" style="cursor:pointer;text-align:left">
+        <div class="stepnum">2</div>
+        <h3>Une partie vierge</h3>
+        <p>La structure du jeu, sans aucun contenu. Tu crées tes duos, tes jokers et tes questions depuis zéro.</p>
+      </button>
+      <button class="step" data-act="openpack" style="cursor:pointer;text-align:left">
+        <div class="stepnum">3</div>
+        <h3>Importer un pack</h3>
+        <p>Tu as reçu un fichier <code>.json</code> créé par quelqu'un d'autre ? Charge-le directement.</p>
+      </button>
+    </div>`,
+  bottom: () => ``
+};
+
+SCREENS.pack = {
+  top: () => railBase("Contenu de la partie"),
+  stage: () => {
+    const err = validerPack(PACK);
+    const nbq = PACK.categories.reduce((t, c) => t + c.questions.length, 0);
+    return `
+      <div class="kicker"><span class="tag">Pack</span><span>${esc(PACK.meta.nom || "sans nom")}</span></div>
+      <div class="picklist">
+        <div class="pickrow"><span class="pickname">Duos</span><span>${PACK.duos.length}</span><span></span></div>
+        <div class="pickrow"><span class="pickname">Questions de Manche 1</span><span>${PACK.manche1.length}</span><span></span></div>
+        <div class="pickrow"><span class="pickname">Catégories</span><span>${PACK.categories.length} · ${nbq} questions</span><span></span></div>
+        <div class="pickrow"><span class="pickname">Consignes de finale</span><span>${PACK.manche3.length}</span><span></span></div>
+        <div class="pickrow"><span class="pickname">Tours en Manche 2 · cœurs en finale · chrono</span><span>${M2_TOURS} · ${M3_LIVES} · ${CHRONO} s</span><span></span></div>
+      </div>
+      ${err.length
+        ? `<div class="warn"><strong>${err.length} point${err.length > 1 ? "s" : ""} à corriger avant de jouer :</strong><br>${err.map(esc).join("<br>")}</div>`
+        : `<div class="roles">Ce pack est complet et jouable.</div>`}
+      <div class="subline" id="packmsg"></div>`;
+  },
+  bottom: () => `
+    <button class="btn ghost" data-act="go" data-to="title">Retour</button>
+    <div class="spacer"></div>
+    <button class="btn primary" data-act="openedit">✏️ Modifier le contenu</button>
+    <button class="btn ghost" data-act="exportpack" style="margin-left:10px">⬇ Exporter en JSON</button>
+    <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>
+    <button class="btn ghost" data-act="usepack" data-which="demo" style="margin-left:10px">Recharger le pack Z'amours</button>`
+};
+
+SCREENS.resume3 = {
+  top: () => railBase("Reprendre une partie · <strong>Manche 3</strong>"),
+  stage: () => `
+    <div class="kicker"><span class="tag">Reprise</span><span>désigne les 2 finalistes — et, si tu veux, le Jury du Fail</span></div>
+    <div class="picklist">
+      ${DUOS.map(d => {
+        const fin = S.finalists.includes(d.id), jury = S.eliminated.includes(d.id);
+        return `<div class="pickrow ${fin ? "isfin" : jury ? "isjury" : ""}">
+          <span class="pickname">${esc(duoName(d))}</span>
+          <button class="btn ${fin ? "primary" : "ghost"}" data-act="pick3" data-id="${d.id}" data-role="fin">Finaliste</button>
+          <button class="btn ${jury ? "primary" : "ghost"}" data-act="pick3" data-id="${d.id}" data-role="jury">Jury du Fail</button>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="subline">Le Jury du Fail est facultatif, mais c'est lui qui tranche les réponses douteuses pendant la Longueur d'onde et qui remet le Prix du Fail.</div>`,
+  bottom: () => `
+    <button class="btn ghost" data-act="go" data-to="title">Retour</button>
+    <div class="spacer"></div>
+    <span class="eyebrow" style="margin-right:14px">${S.finalists.length}/2 finalistes</span>
+    <button class="btn primary" data-act="startresume3" ${S.finalists.length !== 2 ? "disabled" : ""}>Lancer la finale<kbd>→</kbd></button>`
+};
+
+/* ---------- écrans « comment on joue » ---------- */
+
+const RULES = {
+  m1rules: {
+    tag: "Manche 1 · Qualifications",
+    lead: "Mêmes questions pour les 6 duos. Les 2 derniers sortent — puis tout le monde repart de zéro.",
+    steps: [
+      { icon: "slate", t: "La question porte sur UNE personne",
+        d: "C'est le <b>prénom surligné en jaune</b>. Exemple : « le plat préféré de <b>Kelly</b> » → c'est <b>Kelly</b>, et personne d'autre, qui écrit <b>SON</b> vrai plat préféré." },
+      { icon: "think", t: "L'autre doit le deviner",
+        d: "L'autre membre du duo n'écrit pas <b>son</b> plat à lui : il faut écrire <b>le plat que Kelly a mis</b> sur son ardoise." },
+      { icon: "heart", t: "Même réponse = des points",
+        d: "On retourne les deux ardoises. Si elles disent la même chose, le duo marque. <b>C'est la personne surlignée qui tranche</b>, pas l'animateur." }
+    ],
+    foot: "⚡ Éclair : tout le monde révèle en même temps. 🔦 Spotlight : on révèle duo par duo. ⚠️ Le prénom surligné change à chaque question — regardez bien votre pastille."
+  },
+  m2rules: {
+    tag: "Manche 2 · Joker & Catégories",
+    lead: "Un duo à la fois, les compteurs à zéro — et cette fois le prénom concerné est écrit en toutes lettres dans la question.",
+    steps: [
+      { icon: "joker", t: "Le Joker",
+        d: "Chaque duo a <b>sa</b> question, écrite sur mesure pour lui. 3 points." },
+      { icon: "cats", t: "La catégorie",
+        d: "À chacun de ses " + M2_CATS + " tours, le duo annonce un thème et une question est tirée au hasard dedans. Il ne la découvre qu'à l'écran. 2 points." },
+      { icon: "heart", t: "Toujours la même règle",
+        d: "Le prénom nommé dans la question écrit sa vraie réponse, l'autre doit la deviner. Sur un QCM, <b>les deux choisissent une lettre</b> — et il faut la même." }
+    ],
+    foot: M2_TOURS + " tours de table : d'abord les Jokers, puis " + M2_CATS + " tours de Catégorie. " + M2_POINTS + " points en jeu par duo. Les 2 meilleurs duos vont en finale."
+  },
+  m3rules: {
+    tag: "Manche 3 · Longueur d'onde",
+    lead: "Attention, la mécanique change du tout au tout : plus de cible, et on ne gagne plus de points — on en perd.",
+    steps: [
+      { icon: "both", t: "Plus personne ne devine",
+        d: "Fini le prénom surligné : sur chaque question, <b>les deux membres écrivent leur propre réponse en même temps</b>, sans se concerter." },
+      { icon: "reveal", t: "Même réponse ou rien",
+        d: "Les deux ardoises se retournent en même temps. <b>Même chose écrite = tout va bien.</b> Réponses différentes = le duo perd un cœur." },
+      { icon: "heart", t: "3 cœurs, et c'est tout",
+        d: "Chaque duo démarre avec <b>3 cœurs</b>. Le premier qui les perd tous est éliminé — <b>le dernier duo debout gagne</b>." }
+    ],
+    foot: "Les 2 duos jouent la même consigne en même temps. « Chien » et « un chien », ça compte — « bleu » et « bleu clair », c'est le Jury du Fail qui tranche, et sa décision est sans appel. Égalité à la fin ? Mort subite."
+  }
+};
+
+const RULE_ICONS = {
+  slate: `<rect x="12" y="18" width="84" height="62" rx="7"/><line x1="28" y1="40" x2="74" y2="40"/><line x1="28" y1="55" x2="60" y2="55"/><path d="M84 74l14-14 8 8-14 14-10 2z" class="acc"/>`,
+  think: `<ellipse cx="58" cy="42" rx="43" ry="29"/><circle cx="26" cy="79" r="9"/><circle cx="12" cy="93" r="5"/><text x="58" y="56" class="ic-t">?</text>`,
+  heart: `<path class="acc-f" d="M54 84C28 65 12 48 12 33 12 19 22 10 33 10c9 0 16 5 21 12 5-7 12-12 21-12 11 0 21 9 21 23 0 15-16 32-42 51Z"/>`,
+  joker: `<rect x="20" y="12" width="52" height="72" rx="7"/><rect x="36" y="24" width="52" height="72" rx="7" class="fillw"/><text x="62" y="72" class="ic-t">★</text>`,
+  cats: `<rect x="10" y="16" width="42" height="30" rx="6"/><rect x="60" y="16" width="42" height="30" rx="6"/><rect x="10" y="58" width="42" height="30" rx="6" class="acc"/><rect x="60" y="58" width="42" height="30" rx="6"/>`,
+  both: `<rect x="6" y="24" width="46" height="52" rx="6"/><rect x="62" y="24" width="46" height="52" rx="6"/><line x1="18" y1="44" x2="40" y2="44"/><line x1="74" y1="44" x2="96" y2="44"/>`,
+  reveal: `<rect x="6" y="24" width="46" height="52" rx="6" class="fillw"/><rect x="62" y="24" width="46" height="52" rx="6" class="fillw"/><text x="29" y="60" class="ic-t">A</text><text x="85" y="60" class="ic-t">A</text>`
+};
+
+function rulesScreen(key) {
+  const r = RULES[key];
+  return {
+    top: () => railBase(`${r.tag} · <strong>Comment on joue</strong>`),
+    stage: () => `
+      <div class="kicker"><span class="tag">Comment on joue</span><span>${esc(r.lead)}</span></div>
+      <div class="steps">
+        ${r.steps.map((st, i) => `
+          <div class="step">
+            <div class="stepnum">${i + 1}</div>
+            <svg class="ic" viewBox="0 0 116 104">${RULE_ICONS[st.icon]}</svg>
+            <h3>${esc(st.t)}</h3>
+            <p>${st.d}</p>
+          </div>`).join("")}
+      </div>
+      <div class="warn">${r.foot}</div>`,
+    bottom: () => `
+      <div class="spacer"></div>
+      <button class="btn primary" data-act="go" data-to="${key.replace("rules", "")}">C'est parti<kbd>→</kbd></button>`
+  };
+}
+
+SCREENS.m1rules = rulesScreen("m1rules");
+SCREENS.m2rules = rulesScreen("m2rules");
+SCREENS.m3rules = rulesScreen("m3rules");
+
+/* ---------- résultats manche 1 ---------- */
+
+SCREENS.m1res = {
+  top: () => railBase("Manche 1 · Classement et élimination"),
+  stage: () => {
+    const r = rank(S.m1, DUOS);
+    const cut = r[3] ? (S.m1[r[3].id] || 0) : null;
+    const tied = r.filter(d => (S.m1[d.id] || 0) === cut).length > 1 && cut !== null;
+    return `
+      <div class="kicker"><span class="tag">Élimination</span><span>désigne les 2 duos qui sortent</span></div>
+      ${tied ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
+      <div class="ranks">
+        ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${(S.m1[d.id] || 0) === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
+          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${S.m1[d.id] || 0}</span></button>`).join("")}
+      </div>
+      <div class="subline">Les 2 duos désignés deviennent le <em>Jury du Fail</em>, armés des <em>buzzers poulets</em>. Ils arbitrent l'ex æquo de fin de Manche 2 et décernent le Prix du Fail à la toute fin.</div>`;
+  },
+  bottom: () => `
+    <button class="btn ghost" data-act="go" data-to="m1">Revenir aux questions</button>
+    <div class="spacer"></div>
+    <span class="eyebrow" style="margin-right:14px">${S.eliminated.length}/2 désignés</span>
+    <button class="btn primary" data-act="startm2" ${S.eliminated.length !== 2 ? "disabled" : ""}>Manche 2 — remise à zéro<kbd>→</kbd></button>`
+};
+
+/* ---------- manche 2 ---------- */
+
+// 3 paliers de taille pour que la bulle tienne toujours dans l'écran
+function qCls(t, compact) {
+  const base = t.length > 175 ? "xlong" : t.length > 90 ? "long" : "";
+  return compact ? base + " compact" : base;
+}
+
+// Toute question à QCM s'affiche en bulle compacte, options masquées ou non :
+// la place des 3 options est réservée d'avance, et la bulle ne change pas de
+// taille au moment où on appuie sur R.
+function qcmOpen(opts) { return !!opts; }
+
+function m2duo() { return byId(S.m2order[S.m2i]); }
+
+/* --- Manche 3 « Longueur d'onde » : chaque duo a des cœurs, il en perd un
+   à chaque question où les deux membres n'écrivent pas la même chose.
+   On stocke les échecs par question ("3|ak") plutôt qu'un compteur : un clic
+   de trop se corrige d'un second clic, même plusieurs questions plus tard. --- */
+
+
+function m3Fails(id) {
+  return Object.keys(S.m3marks || {}).filter(k => k.split("|")[1] === id).length;
+}
+function m3Lives(id) { return Math.max(0, M3_LIVES - m3Fails(id)); }
+function m3Out(id)   { return m3Lives(id) === 0; }
+function m3Failed(id) { return !!(S.m3marks || {})[S.m3i + "|" + id]; }
+
+// rangée de cœurs : pleins = restants, barrés = perdus
+function heartRow(id) {
+  const left = m3Lives(id);
+  let h = "";
+  for (let k = 0; k < M3_LIVES; k++) h += `<span class="hp ${k < left ? "" : "lost"}">♥</span>`;
+  return `<span class="hprow">${h}</span>`;
+}
+
+// Un QCM n'a pas de cible : les deux partenaires choisissent une lettre.
+function m2IsQcm() {
+  const d = m2duo();
+  if (!d) return false;
+  if (S.m2step === 0) return !!(jokerDe(d).opts || []).length;
+  const rk = d.id + "-r" + S.m2step;
+  const catKey = S.m2cat[rk];
+  if (!catKey) return false;
+  const cat = categorieParId(catKey);
+  const item = cat && cat.questions[S.m2drawn[rk]];
+  return !!(item && item.opts && item.opts.length);
+}
+
+SCREENS.m2 = {
+  top: () => {
+    const d = m2duo();
+    const step = m2StepLabel(S.m2step);
+    return railBase(`Manche 2 · <strong>${m2IsQcm() ? esc(duoName(d)) : duoNameCible(d, S.m2step)}</strong> · ${step} · Duo ${S.m2i + 1}/${S.m2order.length}`, pips(S.m2order.length, S.m2i));
+  },
+  stage: () => {
+    const d = m2duo();
+    const key = d.id;
+
+    if (S.m2step === 0) {
+      const j = jokerDe(d);
+      // le faux départ occupe la place de la question tant qu'il n'a pas été joué
+      const montreGag = !!(j.gag && j.gag.trim()) && !gagFait[d.id + "|joker"];
+      const marks = S.m2marks[key + "-j"];
+      return `
+        <div class="kicker"><span class="tag">🃏 Joker</span><span>3 points</span><span style="color:var(--muted)">sur-mesure — c'est le moment de la manche</span></div>
+        ${montreGag ? `
+          <h1 class="question is-gag ${qCls(j.gag)}"><span class="qtxt">${esc(j.gag)}</span><i class="strike"></i></h1>`
+        : `
+          <h1 class="question ${qCls(j.q, qcmOpen(j.opts))}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
+          ${rolesBand(d, S.m2step, !!j.opts)}`}
+        ${j.opts ? qcmBlock(j.opts) : ""}
+        ${timerBlock()}
+        ${awardRow(key + "-j", 3)}`;
+    }
+
+    const roundKey = key + "-r" + S.m2step;
+
+    if (!S.m2cat[roundKey]) {
+      return `
+        <div class="kicker"><span class="tag">🗂️ Catégorie</span><span>${esc(duoName(d))} annonce son thème</span></div>
+        <h1 class="question">Quel thème ?</h1>
+        <div class="subline">Une question est tirée au hasard dans le thème choisi, puis retirée de la pile.</div>
+        <div class="cats">
+          ${PACK.categories.map(c => {
+            const left = c.questions.length - ((S.m2used && S.m2used[c.id]) || []).length;
+            return `<button class="btn" data-act="pickcat" data-cat="${c.id}" ${left <= 0 ? "disabled" : ""}>${esc(c.label)} <span style="color:var(--muted)">(${left})</span></button>`;
+          }).join("")}
+        </div>`;
+    }
+
+    const cat = categorieParId(S.m2cat[roundKey]);
+    if (!cat) return `<div class="subline">Catégorie introuvable — reviens en arrière et rechoisis.</div>`;
+    const qi = S.m2drawn[roundKey];
+    const item = cat.questions[qi] || { q: "", opts: [] };
+    const qtext = item.q;
+    const opts = (item.opts && item.opts.length) ? item.opts : null;
+    return `
+      <div class="kicker"><span class="tag">${esc(cat.label)}</span><span>2 points</span>
+        ${cat.qcm ? '<span style="color:var(--muted)">QCM — les DEUX doivent choisir la même lettre</span>' : ""}</div>
+      <h1 class="question ${qCls(qtext, qcmOpen(opts))}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
+      ${rolesBand(d, S.m2step, !!opts)}
+      ${opts ? qcmBlock(opts) : ""}
+      ${timerBlock()}
+      ${awardRow(roundKey, 2)}`;
+  },
+  bottom: () => {
+    const d = m2duo();
+    const needCat = S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step];
+    const last = S.m2step === M2_TOURS - 1 && S.m2i === S.m2order.length - 1;
+    return `
+      <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
+      <button class="btn ghost" data-act="treset">Remettre à 20</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" data-act="m2prev" ${S.m2i === 0 && S.m2step === 0 ? "disabled" : ""}>Précédent<kbd>←</kbd></button>
+      <button class="btn primary" data-act="m2next" ${needCat ? "disabled" : ""}>${last ? "Clore la Manche 2" : "Suivant"}<kbd>→</kbd></button>`;
+  }
+};
+
+// mis à vrai par la touche R, consommé au rendu suivant : seule l'option
+// qui vient d'apparaître s'anime (attribuer un point ne la fait pas rejouer)
+let optJustRevealed = false;
+
+function qcmBlock(opts) {
+  const shown = (S.revealCount || 0) % (opts.length + 1);
+  const pop = optJustRevealed;
+  optJustRevealed = false;
+  if (shown === 0) {
+    return `<div class="hidden-note">Options masquées — lis l'intitulé, puis <kbd>R</kbd> pour les révéler une par une.</div>`;
+  }
+  return `<div class="options">${opts.slice(0, shown).map((o, i) =>
+    `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABC"[i]}</span><span>${esc(o)}</span></div>`).join("")}</div>`;
+}
+
+function awardRow(markKey, pts) {
+  const on = !!S.m2marks[markKey];
+  const d = m2duo();
+  const label = m2IsQcm()
+    ? `Ça matche ? — <span style="color:var(--amber)">les DEUX doivent avoir choisi la même lettre</span>`
+    : `Ça matche ? — <span style="color:var(--amber)">${esc(cibleName(d, S.m2step))}</span> écrit sur l'ardoise, `
+      + `<span style="color:var(--amber)">${esc(devineurName(d, S.m2step))}</span> devine`;
+  return `<div>
+    <div class="eyebrow" style="margin-bottom:11px">${label}</div>
+    <div class="scorerow">
+      <button class="chip ${on ? "on" : ""}" data-act="m2mark" data-key="${markKey}" data-pts="${pts}">
+        <span class="mark">${on ? "✓" : ""}</span>Accordé — ${pts} pt${pts > 1 ? "s" : ""}</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- résultats manche 2 ---------- */
+
+SCREENS.m2res = {
+  top: () => railBase("Manche 2 · Classement et finalistes"),
+  stage: () => {
+    const pool = alive();
+    const r = rank(S.m2, pool);
+    const cut = r[1] ? (S.m2[r[1].id] || 0) : null;
+    const tied = r.filter(d => (S.m2[d.id] || 0) === cut).length > 1 && cut !== null;
+    return `
+      <div class="kicker"><span class="tag">Finalistes</span><span>désigne les 2 duos qui passent</span></div>
+      ${tied ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
+      <div class="ranks">
+        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked" : ""} ${(S.m2[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
+          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${S.m2[d.id] || 0}</span></button>`).join("")}
+      </div>
+      <div class="subline">Sur les duos désignés, la pastille marque <em>qualifié</em>, pas éliminé.</div>`;
+  },
+  bottom: () => `
+    <button class="btn ghost" data-act="stophere">Clore la partie ici</button>
+    <div class="spacer"></div>
+    <span class="eyebrow" style="margin-right:14px">${S.finalists.length}/2 qualifiés</span>
+    <button class="btn primary" data-act="startm3" ${S.finalists.length !== 2 ? "disabled" : ""}>Lancer la finale<kbd>→</kbd></button>`
+};
+
+/* ---------- manche 3 ---------- */
+
+SCREENS.m3 = {
+  top: () => railBase(
+    S.sudden
+      ? `Manche 3 · <strong>MORT SUBITE</strong> · Question ${S.m3i + 1}`
+      : `Manche 3 · Longueur d'onde · <strong>Question ${S.m3i + 1}</strong>`,
+    S.sudden ? "" : S.finalists.map(id => `<span class="eyebrow" style="margin-right:18px">${esc(duoName(byId(id)))} ${heartRow(id)}</span>`).join("")),
+  stage: () => {
+    const q = M3[S.m3i % M3.length];
+    return `
+      <div class="kicker"><span class="tag">${S.sudden ? "☠️ Mort subite" : "🏆 Longueur d'onde"}</span>
+        <span>${S.sudden ? "plus de cœurs : le premier qui matche gagne" : M3_LIVES + " cœurs par duo"}</span>
+        <span style="color:var(--muted)">les DEUX membres écrivent à l'aveugle, on révèle ensemble</span></div>
+      <h1 class="question ${qCls(q)}"><span class="qtxt">${esc(q)}</span></h1>
+      ${S.sudden
+        ? `<div class="roles fini">Les cœurs ne comptent plus · <b>le premier duo qui matche remporte la partie</b> · si les deux matchent ou si les deux ratent, on enchaîne</div>`
+        : S.finalists.some(m3Out)
+        ? (() => {
+            const ko = S.finalists.filter(m3Out);
+            return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>la manche est terminée</b>, clique « Déclarer le vainqueur »</div>`;
+          })()
+        : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}
+      ${timerBlock()}
+      <div>
+        <div class="eyebrow" style="margin-bottom:11px">${S.sudden
+          ? "Qui a matché ? — clic pour déclarer le vainqueur"
+          : "Qui n'a <em>pas</em> matché ? — clic pour retirer un cœur"}</div>
+        <div class="scorerow">
+          ${S.sudden
+            ? S.finalists.map(id => `<button class="chip win" data-act="sdwin" data-id="${id}">
+                <span class="mark">🏆</span>${esc(duoName(byId(id)))} a matché</button>`).join("")
+            : S.finalists.map(id => `<button class="chip ${m3Failed(id) ? "fail" : ""}" data-act="m3mark" data-id="${id}" ${m3Out(id) && !m3Failed(id) ? "disabled" : ""}>
+                <span class="mark">${m3Failed(id) ? "✗" : ""}</span>${esc(duoName(byId(id)))} ${heartRow(id)}</button>`).join("")}
+        </div>
+      </div>`;
+  },
+  bottom: () => {
+    if (S.sudden) return `
+      <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
+      <button class="btn ghost" data-act="treset">Remettre à 20</button>
+      <div class="spacer"></div>
+      <span class="eyebrow" style="margin-right:14px">Personne n'a matché ?</span>
+      <button class="btn primary" data-act="m3next">Question suivante<kbd>→</kbd></button>`;
+    const ko = S.finalists.filter(m3Out);
+    const egalite = m3Lives(S.finalists[0]) === m3Lives(S.finalists[1]);
+    return `
+    <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
+    <button class="btn ghost" data-act="treset">Remettre à 20</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" data-act="m3prev" ${S.m3i === 0 ? "disabled" : ""}>Précédente<kbd>←</kbd></button>
+    <button class="btn primary" data-act="m3next" ${ko.length ? "disabled" : ""}>Question suivante<kbd>→</kbd></button>
+    ${egalite
+      ? `<button class="btn ${ko.length ? "primary" : "ghost"}" data-act="startsudden" style="margin-left:10px">☠️ Lancer la mort subite</button>`
+      : `<button class="btn ${ko.length ? "primary" : "ghost"}" data-act="finish" style="margin-left:10px">Déclarer le vainqueur</button>`}`;
+  }
+};
+
+// Résultat de la partie, utilisé par l'écran de clôture ET par l'animation
+// de victoire : une seule source de vérité, pas de risque de divergence.
+function endResult() {
+  if (S.suddenWinner && S.finalists.includes(S.suddenWinner)) {
+    const perdant = S.finalists.find(id => id !== S.suddenWinner);
+    return { egalite: false, win: duoName(byId(S.suddenWinner)),
+      sub: `Départagés en mort subite : ${duoName(byId(S.suddenWinner))} a matché avant ${duoName(byId(perdant))}.` };
+  }
+  if (S.finalists.length === 2) {
+    const [x, y] = S.finalists;
+    const lx = m3Lives(x), ly = m3Lives(y);
+    if (lx === ly) {
+      return { egalite: true, win: "Mort subite",
+        sub: lx === 0
+          ? `${duoName(byId(x))} et ${duoName(byId(y))} ont perdu leurs ${M3_LIVES} cœurs sur la même question. On rejoue : le premier duo qui matche l'emporte.`
+          : `${duoName(byId(x))} et ${duoName(byId(y))} sont à égalité, ${lx} cœur${lx > 1 ? "s" : ""} chacun. Question suivante : le premier duo qui ne matche pas a perdu.` };
+    }
+    const w = lx > ly ? x : y, l = lx > ly ? y : x;
+    const restants = Math.max(lx, ly);
+    return { egalite: false, win: duoName(byId(w)),
+      sub: m3Lives(l) === 0
+        ? `${duoName(byId(l))} a perdu ses ${M3_LIVES} cœurs. ${duoName(byId(w))} termine avec ${restants} cœur${restants > 1 ? "s" : ""}.`
+        : `${restants} cœurs contre ${Math.min(lx, ly)} à la fin de la Longueur d'onde.`,
+      coeurs: restants };
+  }
+  const r = rank(S.m2, alive());
+  return { egalite: false, win: r[0] ? duoName(r[0]) : "—",
+    sub: `Partie close à la fin de la Manche 2, sur le score de la Manche 2 : ${r[0] ? (S.m2[r[0].id] || 0) : 0} points.` };
+}
+
+SCREENS.end = {
+  top: () => railBase("Clôture"),
+  stage: () => {
+    const r = endResult();
+    return `
+      <div class="kicker"><span class="tag">Vainqueur</span></div>
+      <h1 class="winner">${esc(r.win)}</h1>
+      <div class="subline">${esc(r.sub)}</div>
+      <div class="warn"><strong>Il reste le Prix du Fail.</strong> Le Jury — ${S.eliminated.map(id => duoName(byId(id))).join(" et ") || "les duos sortis en Manche 1"} — désigne la pire réponse de la soirée et remet son prix. C'est eux qui ont le mot de la fin.</div>`;
+  },
+  bottom: () => `<button class="btn ghost" data-act="reset">Repartir de zéro</button>`
+};
+
+/* ============================ PANNEAU SCORES ============================ */
+
+function panelHTML() {
+  const row = (d, sc, gone) => `<tr class="${gone ? "gone" : ""}">
+    <td>${esc(duoName(d))}${d.note ? ` <span style="color:var(--muted);font-size:13px">(${esc(d.note)})</span>` : ""}</td>
+    <td style="width:74px"><button class="cible" data-act="cible" data-id="${d.id}">départ : ${esc(S.cible[d.id] === "a" ? d.a : d.b)}</button></td>
+    <td class="num" style="width:52px">${sc}</td></tr>`;
+
+  return `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+      <h2 style="margin:0">Scores</h2><div class="spacer"></div>
+      <button class="btn ghost" data-act="panel">Fermer<kbd>S</kbd></button>
+    </div>
+
+    <h2>Manche 1 — qualifications</h2>
+    ${S.resumed
+      ? `<div class="subline" style="margin-bottom:26px">Jouée lors d'une séance précédente — les scores n'ont pas été ressaisis, ils ne comptent plus.</div>`
+      : `<table><thead><tr><th>Duo</th><th>Cible</th><th style="text-align:right">Pts</th></tr></thead>
+      <tbody>${rank(S.m1, DUOS).map(d => row(d, S.m1[d.id] || 0, S.eliminated.includes(d.id))).join("")}</tbody></table>`}
+
+    <h2>Manche 2 — repart de zéro</h2>
+    ${S.resumed === "m3"
+      ? `<div class="subline" style="margin-bottom:26px">Jouée lors d'une séance précédente — les scores n'ont pas été ressaisis.</div>`
+      : `<table><thead><tr><th>Duo</th><th>Cible</th><th style="text-align:right">Pts</th></tr></thead>
+      <tbody>${rank(S.m2, alive()).map(d => row(d, S.m2[d.id] || 0, false)).join("")}</tbody></table>`}
+
+    ${S.finalists.length ? `<h2>Finale</h2><table><tbody>
+      ${S.finalists.map(id => `<tr><td>${esc(duoName(byId(id)))}</td><td class="num">${S.m3[id] || 0}</td></tr>`).join("")}
+    </tbody></table>` : ""}
+
+    ${S.eliminated.length ? `<h2>Jury du Fail</h2>
+      <div style="color:var(--muted);font-size:15px;line-height:1.6">
+        ${S.eliminated.map(id => esc(duoName(byId(id)))).join("<br>")}
+        <div style="margin-top:10px">Armés des buzzers poulets. Ils buzzent pour contester une égalité, arbitrent l'ex æquo de fin de Manche 2, et décernent le Prix du Fail à la clôture.</div>
+      </div>` : ""}`;
+}
+
+/* ============================ ACTIONS ============================ */
+
+function bindAll() {
+  document.querySelectorAll("[data-act]").forEach(n => {
+    n.addEventListener("click", () => act(n.dataset.act, n.dataset));
+  });
+  if (S.screen === "edit") brancherEditeur();
+}
+
+function act(a, data) {
+  switch (a) {
+    case "panel": S.panel = !S.panel; break;
+    // Deux clics au lieu d'un confirm() : si le navigateur a été réglé sur
+    // « empêcher cette page de créer des boîtes de dialogue », confirm()
+    // renvoie false en silence et le bouton semble mort.
+    case "reset":
+      if (!resetArmed) {
+        resetArmed = true;
+        clearTimeout(resetTimerId);
+        resetTimerId = setTimeout(() => { resetArmed = false; render(); }, 4000);
+        break;
+      }
+      resetArmed = false;
+      clearTimeout(resetTimerId);
+      {
+        S = freshState();
+        announceKey = null;
+        lastScreen = null;
+        clearTimeout(announceTimer);
+        clearTimeout(splashTimer);
+        clearTimeout(sponsorTimer);
+        sponsorKey = null;
+        hbreakPending = null; clearTimeout(hbreakTimer);
+        annulerGag(); derniereQuestion = null;
+        Object.keys(gagFait).forEach(k => delete gagFait[k]);
+        document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
+        victoryKey = null; clearTimeout(victoryTimer);
+      }
+      break;
+    case "go": resetTimer(); S.revealCount = 0; S.screen = data.to; break;
+    case "timer": startTimer(); return;
+    case "treset": resetTimer(); break;
+
+    case "m1mark": {
+      const m = S.m1marks[S.m1i] || (S.m1marks[S.m1i] = {});
+      const p = M1[S.m1i].p;
+      if (m[data.id]) { delete m[data.id]; S.m1[data.id] -= p; }
+      else { m[data.id] = 1; S.m1[data.id] = (S.m1[data.id] || 0) + p; }
+      break;
+    }
+    case "m1next":
+      resetTimer(); S.revealCount = 0;
+      if (S.m1i === M1.length - 1) S.screen = "m1res";
+      else S.m1i++;
+      break;
+    case "m1prev": resetTimer(); S.revealCount = 0; if (S.m1i > 0) S.m1i--; break;
+
+    case "elim": {
+      const i = S.eliminated.indexOf(data.id);
+      if (i >= 0) S.eliminated.splice(i, 1);
+      else if (S.eliminated.length < 2) S.eliminated.push(data.id);
+      break;
+    }
+    case "usepack": {
+      const pk = data.which === "vide" ? PACK_VIDE : PACK_DEFAUT;
+      appliquerPack(normaliserPack(JSON.parse(JSON.stringify(pk))));
+      sauverPack();
+      S = freshState();
+      break;
+    }
+    case "openpack": S.screen = "pack"; break;
+    case "openedit": S.screen = "edit"; break;
+    case "ed": actionEditeur(data); break;
+    case "exportpack": exporterPack(); break;
+    case "importpack": importerPack(); break;
+
+    case "openresume3":
+      S = freshState();
+      S.screen = "resume3";
+      break;
+    case "pick3": {
+      const id = data.id;
+      const liste = data.role === "fin" ? "finalists" : "eliminated";
+      const autre = data.role === "fin" ? "eliminated" : "finalists";
+      const i = S[liste].indexOf(id);
+      if (i >= 0) { S[liste].splice(i, 1); break; }
+      const j = S[autre].indexOf(id);
+      if (j >= 0) S[autre].splice(j, 1);          // un duo ne peut pas être les deux
+      if (S[liste].length >= 2) S[liste].shift();  // 2 maximum : le plus ancien sort
+      S[liste].push(id);
+      break;
+    }
+    case "startresume3":
+      S.m3marks = {}; S.m3i = 0; S.m3 = {};
+      S.resumed = "m3";
+      resetTimer();
+      S.screen = "m3rules";
+      break;
+
+    case "openresume":
+      S = freshState();
+      S.screen = "resume";
+      break;
+    case "pickresume": {
+      const i = S.m2order.indexOf(data.id);
+      if (i >= 0) S.m2order.splice(i, 1); else S.m2order.push(data.id);
+      // on garde l'ordre de la liste DUOS pour l'ordre de passage
+      S.m2order = DUOS.filter(d => S.m2order.includes(d.id)).map(d => d.id);
+      break;
+    }
+    case "startresume":
+      S.eliminated = DUOS.filter(d => !S.m2order.includes(d.id)).map(d => d.id);
+      S.m2order.forEach(id => S.m2[id] = 0);
+      S.m2i = 0; S.m2step = 0; S.m2cat = {}; S.m2drawn = {}; S.m2used = {}; S.m2marks = {};
+      S.resumed = "m2";
+      resetTimer();
+      S.screen = "m2rules";
+      break;
+
+    case "startm2":
+      S.m2order = alive().map(d => d.id);
+      alive().forEach(d => S.m2[d.id] = 0);
+      S.m2i = 0; S.m2step = 0; S.revealCount = 0;
+      S.m2used = {};
+      resetTimer();
+      S.screen = "m2rules";
+      break;
+
+    case "pickcat": {
+      const roundKey = m2duo().id + "-r" + S.m2step;
+      if (!S.m2used) S.m2used = {};
+      const used = S.m2used[data.cat] || (S.m2used[data.cat] = []);
+      const cat = categorieParId(data.cat);
+      if (!cat) break;
+      const avail = cat.questions.map((_, i) => i).filter(i => !used.includes(i));
+      if (!avail.length) break;
+      const qi = avail[Math.floor(Math.random() * avail.length)];
+      used.push(qi);
+      S.m2cat[roundKey] = data.cat;
+      S.m2drawn[roundKey] = qi;
+      S.revealCount = 0;
+      break;
+    }
+    case "m2mark": {
+      const k = data.key, p = +data.pts, id = k.split("-")[0];
+      if (S.m2marks[k]) { delete S.m2marks[k]; S.m2[id] -= p; }
+      else { S.m2marks[k] = 1; S.m2[id] = (S.m2[id] || 0) + p; }
+      break;
+    }
+    case "m2next":
+      resetTimer(); S.revealCount = 0;
+      if (S.m2i < S.m2order.length - 1) S.m2i++;
+      else if (S.m2step < M2_TOURS - 1) { S.m2step++; S.m2i = 0; }
+      else S.screen = "m2res";
+      break;
+    case "m2prev":
+      resetTimer(); S.revealCount = 0;
+      if (S.m2i > 0) S.m2i--;
+      else if (S.m2step > 0) { S.m2step--; S.m2i = S.m2order.length - 1; }
+      break;
+
+    case "final": {
+      const i = S.finalists.indexOf(data.id);
+      if (i >= 0) S.finalists.splice(i, 1);
+      else if (S.finalists.length < 2) S.finalists.push(data.id);
+      break;
+    }
+    case "stophere": S.finalists = []; S.screen = "end"; break;
+    case "startm3":
+      S.finalists.forEach(id => S.m3[id] = 0);
+      S.m3i = 0; resetTimer(); S.screen = "m3rules";
+      break;
+    case "m3mark": {
+      const k = S.m3i + "|" + data.id;
+      if (S.m3marks[k]) delete S.m3marks[k]; else S.m3marks[k] = 1;
+      break;
+    }
+    case "m3next":
+      queueHeartBreak();
+      resetTimer(); S.m3i++;
+      break;
+    case "m3prev": resetTimer(); if (S.m3i > 0) S.m3i--; break;
+    case "startsudden":
+      S.sudden = true;
+      S.m3i++;
+      resetTimer();
+      break;
+    case "sdwin":
+      S.suddenWinner = data.id;
+      S.screen = "end";
+      break;
+    case "finish": queueHeartBreak(); S.screen = "end"; break;
+
+    case "cible": S.cible[data.id] = S.cible[data.id] === "a" ? "b" : "a"; break;
+  }
+  render();
+}
+
+/* ============================ CLAVIER ============================ */
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  const k = e.key.toLowerCase();
+
+  if (k === "s") { e.preventDefault(); act("panel", {}); return; }
+  if (k === "r") { e.preventDefault(); S.revealCount = (S.revealCount || 0) + 1; optJustRevealed = true; render(); return; }
+  if (e.code === "Space") { e.preventDefault(); startTimer(); return; }
+
+  if (k === "arrowright") {
+    e.preventDefault();
+    if (S.screen === "title") act("go", { to: "m1rules" });
+    else if (S.screen === "m1") act("m1next", {});
+    else if (S.screen === "m1res" && S.eliminated.length === 2) act("startm2", {});
+    else if (S.screen === "m2") { const d = m2duo(); if (!(S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step])) act("m2next", {}); }
+    else if (S.screen === "m2res" && S.finalists.length === 2) act("startm3", {});
+    else if (S.screen === "m3") { if (S.sudden || !S.finalists.some(m3Out)) act("m3next", {}); }
+    else if (S.screen.endsWith("rules")) act("go", { to: S.screen.replace("rules", "") });
+    return;
+  }
+
+  if (k === "arrowleft") {
+    e.preventDefault();
+    if (S.screen === "m1") act("m1prev", {});
+    else if (S.screen === "m2") act("m2prev", {});
+    return;
+  }
+});
+
+
+/* ========================= ÉDITEUR DE PACK =========================
+   Principe d'ergonomie : les champs texte ne déclenchent PAS de re-rendu.
+   Un re-rendu à chaque frappe ferait perdre le curseur. On écrit dans le
+   pack sur l'événement "change" (donc à la sortie du champ), on sauvegarde,
+   et on ne rafraîchit que le bandeau d'état. Le rendu complet est réservé
+   aux actions de structure : ajouter, supprimer, déplacer.
+   =================================================================== */
+
+let ONGLET = "duos";
+let CAT_OUVERTE = null;
+
+function lireChemin(o, chemin) {
+  return chemin.split(".").reduce((x, k) => (x == null ? x : x[k]), o);
+}
+function ecrireChemin(o, chemin, val) {
+  const ks = chemin.split(".");
+  const dernier = ks.pop();
+  const cible = ks.reduce((x, k) => x[k], o);
+  cible[dernier] = val;
+}
+
+function idUnique(prefixe) {
+  let n = 1, id;
+  do { id = prefixe + n++; } while (PACK.duos.some(d => d.id === id) || PACK.categories.some(c => c.id === id));
+  return id;
+}
+
+function questionVide() { return { q: "", opts: [], note: "", sponsor: null }; }
+
+/* --- petits composants de formulaire --- */
+
+function champ(label, chemin, valeur, type) {
+  return `<label class="ed-f"><span>${esc(label)}</span>
+    <input type="${type || "text"}" data-path="${esc(chemin)}" value="${esc(valeur == null ? "" : valeur)}"></label>`;
+}
+
+function zone(label, chemin, valeur, lignes) {
+  return `<label class="ed-f"><span>${esc(label)}</span>
+    <textarea rows="${lignes || 2}" data-path="${esc(chemin)}">${esc(valeur || "")}</textarea></label>`;
+}
+
+// Liste d'options de QCM : 0 = pas un QCM, sinon 2 ou 3 lettres.
+function blocOpts(chemin, opts) {
+  return `<div class="ed-opts">
+    <div class="ed-lbl">QCM — ${opts.length ? opts.length + " option" + (opts.length > 1 ? "s" : "") : "aucune option, question ouverte"}</div>
+    ${opts.map((o, i) => `<div class="ed-opt">
+      <span class="ed-letter">${"ABCDEF"[i]}</span>
+      <input type="text" data-path="${esc(chemin)}.${i}" value="${esc(o)}">
+      <button class="ed-x" data-act="ed" data-op="delopt" data-path="${esc(chemin)}" data-i="${i}" title="Supprimer cette option">✕</button>
+    </div>`).join("")}
+    ${opts.length < 6 ? `<button class="ed-add" data-act="ed" data-op="addopt" data-path="${esc(chemin)}">+ option</button>` : ""}
+  </div>`;
+}
+
+function blocSponsor(chemin, sp) {
+  return `<details class="ed-det" ${sp ? "open" : ""}>
+    <summary>Bandeau sponsor ${sp ? "— actif" : "(facultatif)"}</summary>
+    ${champ("Présenté par", chemin + ".by", sp ? sp.by : "")}
+    ${champ("Mention en petit", chemin + ".fine", sp ? sp.fine : "")}
+    <div class="ed-hint">Laisse « Présenté par » vide pour désactiver le bandeau.</div>
+  </details>`;
+}
+
+function boutonsOrdre(op, i, n) {
+  return `<span class="ed-ord">
+    <button class="ed-x" data-act="ed" data-op="${op}" data-i="${i}" data-dir="-1" ${i === 0 ? "disabled" : ""} title="Monter">↑</button>
+    <button class="ed-x" data-act="ed" data-op="${op}" data-i="${i}" data-dir="1" ${i === n - 1 ? "disabled" : ""} title="Descendre">↓</button>
+  </span>`;
+}
+
+/* --- les onglets --- */
+
+function ongletDuos() {
+  return `${PACK.duos.map((d, i) => `
+    <div class="ed-card">
+      <div class="ed-head">
+        <strong>${esc(d.a || "?")} &amp; ${esc(d.b || "?")}</strong>
+        ${boutonsOrdre("moveduo", i, PACK.duos.length)}
+        <button class="ed-x danger" data-act="ed" data-op="delduo" data-i="${i}" title="Supprimer ce duo">✕</button>
+      </div>
+      <div class="ed-row2">
+        ${champ("Prénom 1", `duos.${i}.a`, d.a)}
+        ${champ("Prénom 2", `duos.${i}.b`, d.b)}
+      </div>
+      <div class="ed-sub">Joker — la question sur mesure de ce duo, 3 points</div>
+      ${champ("Faux départ (barré à l'écran, facultatif)", `duos.${i}.joker.gag`, d.joker.gag)}
+      ${zone("Question du Joker", `duos.${i}.joker.q`, d.joker.q, 2)}
+      ${blocOpts(`duos.${i}.joker.opts`, d.joker.opts)}
+    </div>`).join("")}
+    <button class="ed-add gros" data-act="ed" data-op="addduo">+ Ajouter un duo</button>`;
+}
+
+function ongletM1() {
+  return `<div class="ed-hint">« … » sera remplacé à l'écran par le prénom de la personne concernée.</div>
+    ${PACK.manche1.map((q, i) => `
+    <div class="ed-card">
+      <div class="ed-head">
+        <strong>Question ${i + 1}</strong>
+        ${boutonsOrdre("movem1", i, PACK.manche1.length)}
+        <button class="ed-x danger" data-act="ed" data-op="delm1" data-i="${i}" title="Supprimer">✕</button>
+      </div>
+      <div class="ed-row2">
+        <label class="ed-f"><span>Régime</span>
+          <select data-path="manche1.${i}.type">
+            <option value="eclair" ${q.type === "eclair" ? "selected" : ""}>⚡ Éclair — tous révèlent ensemble</option>
+            <option value="spotlight" ${q.type === "spotlight" ? "selected" : ""}>🔦 Spotlight — duo par duo</option>
+          </select></label>
+        ${champ("Points", `manche1.${i}.pts`, q.pts, "number")}
+      </div>
+      ${zone("Question", `manche1.${i}.q`, q.q, 2)}
+      ${champ("Note affichée sous la question (facultatif)", `manche1.${i}.note`, q.note)}
+      ${blocOpts(`manche1.${i}.opts`, q.opts)}
+      ${blocSponsor(`manche1.${i}.sponsor`, q.sponsor)}
+    </div>`).join("")}
+    <button class="ed-add gros" data-act="ed" data-op="addm1">+ Ajouter une question</button>`;
+}
+
+function ongletCats() {
+  const c = PACK.categories.find(x => x.id === CAT_OUVERTE);
+  if (!c) {
+    return `<div class="ed-hint">Choisis une catégorie à modifier.</div>
+      ${PACK.categories.map((x, i) => `
+        <div class="ed-card compact">
+          <div class="ed-head">
+            <strong>${esc(x.label)}</strong>
+            <span class="ed-count">${x.questions.length} question${x.questions.length > 1 ? "s" : ""}${x.qcm ? " · QCM" : ""}</span>
+            <button class="ed-add" data-act="ed" data-op="opencat" data-id="${esc(x.id)}">Modifier</button>
+            <button class="ed-x danger" data-act="ed" data-op="delcat" data-i="${i}" title="Supprimer la catégorie">✕</button>
+          </div>
+        </div>`).join("")}
+      <button class="ed-add gros" data-act="ed" data-op="addcat">+ Ajouter une catégorie</button>`;
+  }
+  const ci = PACK.categories.indexOf(c);
+  return `<button class="ed-add" data-act="ed" data-op="closecat">← Toutes les catégories</button>
+    <div class="ed-card">
+      ${champ("Nom de la catégorie (emoji accepté)", `categories.${ci}.label`, c.label)}
+      <label class="ed-check"><input type="checkbox" data-path="categories.${ci}.qcm" ${c.qcm ? "checked" : ""}>
+        <span>Catégorie à QCM — rappelle à l'écran que les deux doivent choisir la même lettre</span></label>
+    </div>
+    ${c.questions.map((q, i) => `
+      <div class="ed-card">
+        <div class="ed-head">
+          <strong>${i + 1}</strong>
+          ${boutonsOrdre("moveq", i, c.questions.length)}
+          <button class="ed-x danger" data-act="ed" data-op="delq" data-i="${i}" title="Supprimer">✕</button>
+        </div>
+        ${zone("Question", `categories.${ci}.questions.${i}.q`, q.q, 2)}
+        ${blocOpts(`categories.${ci}.questions.${i}.opts`, q.opts)}
+        ${blocSponsor(`categories.${ci}.questions.${i}.sponsor`, q.sponsor)}
+      </div>`).join("")}
+    <button class="ed-add gros" data-act="ed" data-op="addq">+ Ajouter une question</button>`;
+}
+
+function ongletM3() {
+  return `<div class="ed-hint">En finale, les deux membres écrivent en même temps et doivent tomber d'accord.
+    Les consignes courtes et fermées marchent le mieux : « Le même animal », « Un chiffre entre 1 et 5 ».</div>
+    ${PACK.manche3.map((q, i) => `
+      <div class="ed-card compact">
+        <div class="ed-head">
+          <strong>${i + 1}</strong>
+          ${boutonsOrdre("movem3", i, PACK.manche3.length)}
+          <button class="ed-x danger" data-act="ed" data-op="delm3" data-i="${i}" title="Supprimer">✕</button>
+        </div>
+        ${champ("Consigne", `manche3.${i}.q`, q.q)}
+      </div>`).join("")}
+    <button class="ed-add gros" data-act="ed" data-op="addm3">+ Ajouter une consigne</button>`;
+}
+
+function ongletReglages() {
+  const r = PACK.reglages;
+  return `<div class="ed-card">
+      <div class="ed-sub">Identité du pack</div>
+      ${champ("Nom", "meta.nom", PACK.meta.nom)}
+      ${champ("Sous-titre (affiché sous le titre)", "meta.sousTitre", PACK.meta.sousTitre)}
+      ${champ("Auteur", "meta.auteur", PACK.meta.auteur)}
+    </div>
+    <div class="ed-card">
+      <div class="ed-sub">Règles</div>
+      ${champ("Tours de table en Manche 2 (Joker compris)", "reglages.m2Tours", r.m2Tours, "number")}
+      <div class="ed-hint">${M2_TOURS} tours = 1 Joker + ${M2_CATS} catégorie${M2_CATS > 1 ? "s" : ""}, soit ${M2_POINTS} points par duo.
+        ${PACK.duos.length ? `Avec ${PACK.duos.length} duos, ${PACK.duos.length * M2_CATS} questions seront tirées.` : ""}</div>
+      ${champ("Cœurs par duo en finale", "reglages.m3Coeurs", r.m3Coeurs, "number")}
+      ${champ("Durée du chrono, en secondes", "reglages.chrono", r.chrono, "number")}
+    </div>`;
+}
+
+/* --- l'écran --- */
+
+SCREENS.edit = {
+  top: () => railBase(`Éditeur · <strong>${esc(PACK.meta.nom || "sans nom")}</strong>`),
+  stage: () => {
+    const onglets = [["duos", "Duos & Jokers", PACK.duos.length],
+                     ["m1", "Manche 1", PACK.manche1.length],
+                     ["cats", "Catégories", PACK.categories.reduce((t, c) => t + c.questions.length, 0)],
+                     ["m3", "Finale", PACK.manche3.length],
+                     ["reg", "Réglages", ""]];
+    const corps = { duos: ongletDuos, m1: ongletM1, cats: ongletCats, m3: ongletM3, reg: ongletReglages };
+    return `<div class="editor">
+      <div class="ed-tabs">
+        ${onglets.map(([k, nom, n]) => `<button class="ed-tab ${ONGLET === k ? "on" : ""}" data-act="ed" data-op="tab" data-k="${k}">
+          ${esc(nom)}${n === "" ? "" : ` <span class="ed-count">${n}</span>`}</button>`).join("")}
+      </div>
+      <div class="ed-status" id="ed-status">${statutPackHTML()}</div>
+      <div class="ed-body">${(corps[ONGLET] || ongletDuos)()}</div>
+    </div>`;
+  },
+  bottom: () => `
+    <button class="btn ghost" data-act="go" data-to="title">← Écran de titre</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" data-act="exportpack">⬇ Exporter</button>
+    <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>`
+};
+
+function statutPackHTML() {
+  const err = validerPack(PACK);
+  return err.length
+    ? `<span class="ko">${err.length} point${err.length > 1 ? "s" : ""} à corriger :</span> ${esc(err.join(" · "))}`
+    : `<span class="ok">✓ Pack complet et jouable</span>`;
+}
+
+function rafraichirStatut() {
+  const n = document.getElementById("ed-status");
+  if (n) n.innerHTML = statutPackHTML();
+}
+
+/* --- écriture des champs, sans re-rendu --- */
+
+function brancherEditeur() {
+  document.querySelectorAll(".editor [data-path]").forEach(n => {
+    n.addEventListener("change", () => {
+      const p = n.dataset.path;
+      let v;
+      if (n.type === "checkbox") v = n.checked;
+      else if (n.type === "number") v = Math.max(1, parseInt(n.value, 10) || 1);
+      else v = n.value;
+
+      // le sponsor n'existe que si « présenté par » est rempli
+      if (/\.sponsor\.(by|fine)$/.test(p)) {
+        const base = p.replace(/\.(by|fine)$/, "");
+        const champ = p.endsWith(".by") ? "by" : "fine";
+        let sp = lireChemin(PACK, base) || { by: "", fine: "" };
+        sp[champ] = v;
+        ecrireChemin(PACK, base, sp.by.trim() ? sp : null);
+      } else {
+        ecrireChemin(PACK, p, v);
+      }
+      appliquerPack(PACK);
+      sauverPack();
+      rafraichirStatut();
+      if (n.type === "number") n.value = lireChemin(PACK, p);
+    });
+  });
+}
+
+/* --- actions de structure : elles, provoquent un re-rendu --- */
+
+function actionEditeur(d) {
+  const i = parseInt(d.i, 10);
+  const cat = PACK.categories.find(x => x.id === CAT_OUVERTE);
+  switch (d.op) {
+    case "tab": ONGLET = d.k; CAT_OUVERTE = null; break;
+    case "addduo": PACK.duos.push({ id: idUnique("duo"), a: "", b: "", joker: { gag: "", q: "", opts: [] } }); break;
+    case "delduo": PACK.duos.splice(i, 1); break;
+    case "moveduo": deplacer(PACK.duos, i, parseInt(d.dir, 10)); break;
+    case "addm1": PACK.manche1.push(Object.assign(questionVide(), { type: "eclair", pts: 1 })); break;
+    case "delm1": PACK.manche1.splice(i, 1); break;
+    case "movem1": deplacer(PACK.manche1, i, parseInt(d.dir, 10)); break;
+    case "addcat": PACK.categories.push({ id: idUnique("cat"), label: "Nouvelle catégorie", qcm: false, questions: [] }); break;
+    case "delcat": PACK.categories.splice(i, 1); break;
+    case "opencat": CAT_OUVERTE = d.id; break;
+    case "closecat": CAT_OUVERTE = null; break;
+    case "addq": if (cat) cat.questions.push(questionVide()); break;
+    case "delq": if (cat) cat.questions.splice(i, 1); break;
+    case "moveq": if (cat) deplacer(cat.questions, i, parseInt(d.dir, 10)); break;
+    case "addm3": PACK.manche3.push(questionVide()); break;
+    case "delm3": PACK.manche3.splice(i, 1); break;
+    case "movem3": deplacer(PACK.manche3, i, parseInt(d.dir, 10)); break;
+    case "addopt": { const a = lireChemin(PACK, d.path); if (a.length < 6) a.push(""); break; }
+    case "delopt": { const a = lireChemin(PACK, d.path); a.splice(i, 1); break; }
+  }
+  appliquerPack(PACK);
+  sauverPack();
+}
+
+function deplacer(arr, i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  const [x] = arr.splice(i, 1);
+  arr.splice(j, 0, x);
+}
+
+/* ---------- import / export du pack ---------- */
+
+function messagePack(txt) {
+  const n = document.getElementById("packmsg");
+  if (n) n.textContent = txt;
+}
+
+function exporterPack() {
+  const nom = (PACK.meta.nom || "pack").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const json = JSON.stringify(PACK, null, 2);
+  try {
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = (nom || "pack") + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    messagePack("Fichier " + a.download + " téléchargé.");
+  } catch (e) {
+    // page cloisonnée : le téléchargement peut être bloqué, on passe par le presse-papiers
+    try {
+      navigator.clipboard.writeText(json);
+      messagePack("Téléchargement bloqué par le navigateur — le JSON a été copié dans le presse-papiers.");
+    } catch (e2) {
+      messagePack("Impossible d'exporter ici. Ouvre le fichier depuis ton disque plutôt que dans un aperçu.");
+    }
+  }
+}
+
+function importerPack() {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "application/json,.json";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const pk = normaliserPack(JSON.parse(fr.result));
+        const err = validerPack(pk);
+        appliquerPack(pk);
+        sauverPack();
+        S = freshState();
+        S.screen = "pack";
+        render();
+        messagePack(err.length
+          ? `Pack importé, mais ${err.length} point${err.length > 1 ? "s" : ""} à corriger avant de jouer.`
+          : "Pack importé et prêt à jouer.");
+      } catch (e) {
+        messagePack("Fichier illisible : ce n'est pas un pack JSON valide.");
+      }
+    };
+    fr.readAsText(f);
+  };
+  inp.click();
+}
+
+/* ============================ BOOT ============================ */
+
+// Trappe de secours : ouvrir la page avec #reset à la fin de l'URL efface la
+// sauvegarde AVANT tout rendu. Utile si une partie corrompue empêche même
+// l'affichage du bouton Reset.
+try {
+  if (/reset/i.test(location.hash) || /reset/i.test(location.search)) {
+    localStorage.removeItem(KEY);
+  }
+} catch (e) {}
+
+// Si l'état sauvegardé est inexploitable, on repart de zéro plutôt que de
+// laisser une page blanche.
+// Ajouter #reset à une page DÉJÀ ouverte ne la recharge pas : on écoute donc
+// aussi le changement d'ancre pour que la trappe marche dans les deux cas.
+window.addEventListener("hashchange", () => {
+  if (!/reset/i.test(location.hash)) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  S = freshState();
+  resetArmed = false;
+  announceKey = null; lastScreen = null; sponsorKey = null; flashKey = null;
+  hbreakPending = null; clearTimeout(hbreakTimer);
+        document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
+        victoryKey = null; clearTimeout(victoryTimer);
+  render();
+});
+
+// Le pack doit être chargé AVANT l'état de partie : le moteur en dépend.
+if (!chargerPack()) {
+  appliquerPack(normaliserPack(JSON.parse(JSON.stringify(PACK_DEFAUT))));
+}
+
+try {
+  load();
+  if (!localStorage.getItem(PACK_KEY) && S.screen === "title") S.screen = "choix";
+  render();
+} catch (e) {
+  console.error("État illisible, retour à l'écran de titre :", e);
+  try { localStorage.removeItem(KEY); } catch (e2) {}
+  S = freshState();
+  render();
+}
+</script>
