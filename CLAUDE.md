@@ -127,8 +127,10 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 - **Changer la forme de `S`** (pas juste son contenu) : incrémenter `KEY` (`zamours-console-v4`)
   pour invalider les parties sauvegardées. Changer la forme du pack : faire évoluer
   `normaliserPack()`, pour que les anciens fichiers `.json` restent lisibles.
-- **Le repère du prénom est le caractère `…` (U+2026)**, découpé par `qText()`. Trois points tapés
-  au clavier (`...`) ne sont **pas** reconnus. C'est à revoir en phase 2.
+- **Le repère du prénom est `...` (trois points) ou `…` (U+2026)**, découpé par `qText()`. Les
+  deux valent pour l'ancien contenu comme pour le nouveau. Contrepartie : trois points ne peuvent
+  plus servir de vrais points de suspension dans une question (le faux départ d'un Joker, lui, ne
+  passe pas par `qText()`).
 - **Animations** : chaque `maybeX()` garde une clé pour ne pas rejouer sur un simple re-rendu.
   `nettoyerEffets()` remet tout à zéro : l'appeler après tout changement de partie ou de pack.
 - **Polices** : Impact et Brush Script sont des polices Windows. Sous Linux ou macOS, la page
@@ -166,9 +168,7 @@ Ordre conseillé : l'auto-test protège chaque étape, on l'étend au fur et à 
    - « 3 manches » sur l'écran titre.
 
    `validerPack()` exige en conséquence au moins 4 duos. Étendre l'auto-test à 4, 5 et 8 duos.
-2. **Repère du prénom tapable.** Accepter aussi `...`, ou passer à un repère explicite, et ajouter
-   un bouton « insérer le prénom » dans l'éditeur. Le choix est à trancher. Ne pas casser les
-   packs existants, qui utilisent `…`.
+2. ~~Repère du prénom tapable~~ — fait le 24/09/2026 : `...` vaut `…`.
 3. **Stockage hybride.**
    - Une page ouverte en double-clic **ne peut pas lire** un JSON posé à côté d'elle : `fetch` est
      bloqué en `file://`. On ouvre donc le JSON par un bouton ou par glisser-déposer.

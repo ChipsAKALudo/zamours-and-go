@@ -2439,12 +2439,14 @@ function cibleName(d, i) { return cibleSide(d, i) === "a" ? d.a : d.b; }
 function devineurName(d, i) { return cibleSide(d, i) === "a" ? d.b : d.a; }
 
 // « … » désigne la cible. En Manche 2 un seul duo joue : on écrit son prénom
-// en toutes lettres. En Manche 1 les 6 duos ont chacun leur cible, on garde le
-// repère mais on le surligne comme le prénom dans la pastille, pour que le lien
-// soit visuel et non à deviner.
+// en toutes lettres. En Manche 1 tous les duos ont chacun leur cible, on garde
+// le repère mais on le surligne comme le prénom dans la pastille, pour que le
+// lien soit visuel et non à deviner.
+// Trois points tapés au clavier (« ... ») valent « … » : ce caractère-là ne se
+// tape pas sur un clavier Windows.
 function qText(t, name) {
   const marque = name ? esc(name) : "…";
-  return esc(t).split("…").join(`<span class="ph">${marque}</span>`);
+  return esc(t).split(/\.\.\.|…/).join(`<span class="ph">${marque}</span>`);
 }
 
 // bandeau des rôles, affiché juste sous la question
@@ -4170,7 +4172,8 @@ function ongletDuos() {
 }
 
 // Le même texte sert pour toutes les personnes : il s'écrit au neutre.
-const AIDE_QUESTION = `« … » sera remplacé à l'écran par le prénom de la personne concernée.
+const AIDE_QUESTION = `Tape trois points « ... » là où doit apparaître le prénom de la personne concernée :
+  « Quel est le plat préféré de ... ? ». Évite donc « ... » ailleurs dans la question.
   Écris au neutre, la même question sert pour tout le monde : « en rentrant du boulot » plutôt que « quand il rentre ».`;
 
 function ongletM1() {
@@ -4459,6 +4462,12 @@ function autotest() {
   };
 
   try {
+    // 0. repère du prénom : les trois points tapés au clavier valent « … »
+    ["Le plat de ... ?", "Le plat de … ?"].forEach(t => {
+      const h = qText(t, "Zoé");
+      if ((h.match(/Zoé/g) || []).length !== 1 || /\.\.\.|…/.test(h)) pb.push(`repère du prénom : « ${t} » donne « ${h} »`);
+    });
+
     // 1. un pack incomplet ne doit pas se lancer (il plantait la Manche 1)
     appliquerPack(normaliserPack(JSON.parse(JSON.stringify(PACK_VIDE))));
     S = freshState();
