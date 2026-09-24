@@ -13,6 +13,14 @@ Aucune connexion nécessaire.
 Ouvrir `zamours.html#autotest` : la page joue une partie complète avec le pack chargé, sans rien
 sauvegarder, et affiche en bas à gauche ce qui casse. À relancer après toute modification du moteur.
 
+## Faire évoluer le jeu avec Claude
+
+Ouvrir Claude dans ce dossier : il lit `CLAUDE.md` (architecture, pièges, décisions prises, reste à
+faire) avant de toucher au code.
+
+Tant que le pack vit dans le navigateur, **exporter le JSON après chaque séance de préparation**
+(éditeur, bouton « ⬇ Exporter ») : vider les données du navigateur ou changer de PC le fait perdre.
+
 ## Dossiers
 
 - `docs/origine/` — fiche animateur et manuel de la première édition (juillet 2026). En partie
