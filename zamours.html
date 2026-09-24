@@ -1,3 +1,7 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Z'amours and Go — Pupitre</title>
 
 <style>
@@ -910,7 +914,7 @@
   }
   .ed-x:hover { background: var(--ground-2); }
   .ed-x:disabled { opacity: .3; cursor: not-allowed; }
-  .ed-x.danger:hover { background: var(--rose); color: #fff; }
+  .ed-x.danger:hover, .ed-x.danger.arme { background: var(--rose); color: #fff; }
   .ed-ord { display: inline-flex; gap: 4px; }
 
   .ed-add {
@@ -1888,7 +1892,6 @@ const PACK_DEFAUT = {
     {
       "id": "bouffe",
       "label": "🍔 Bouffe",
-      "qcm": false,
       "questions": [
         {
           "q": "Qu'est-ce que … mange debout devant le frigo, sans assiette, quand il rentre du boulot ?",
@@ -1939,7 +1942,6 @@ const PACK_DEFAUT = {
     {
       "id": "boulot",
       "label": "💼 Boulot",
-      "qcm": false,
       "questions": [
         {
           "q": "Quelle est la feature que … réclame plus que tout dans l'app ?",
@@ -1986,7 +1988,6 @@ const PACK_DEFAUT = {
     {
       "id": "manies",
       "label": "🤪 Manies",
-      "qcm": false,
       "questions": [
         {
           "q": "Quel est le pire tic ou la pire manie de … ?",
@@ -2033,7 +2034,6 @@ const PACK_DEFAUT = {
     {
       "id": "vieperso",
       "label": "🏠 Vie perso",
-      "qcm": false,
       "questions": [
         {
           "q": "Combien de réveils … met le matin sur son téléphone ?",
@@ -2112,7 +2112,6 @@ const PACK_DEFAUT = {
     {
       "id": "culture",
       "label": "🎬 Culture / Loisirs",
-      "qcm": false,
       "questions": [
         {
           "q": "Quelle chanson … chante à tue-tête quand personne (croit-il/elle) n'écoute ?",
@@ -2159,7 +2158,6 @@ const PACK_DEFAUT = {
     {
       "id": "scenarios",
       "label": "🎭 Scénarios",
-      "qcm": true,
       "questions": [
         {
           "q": "Une publicité pour un club BDSM tombe de la poche de …",
@@ -2323,7 +2321,19 @@ function appliquerPack(pk) {
   CHRONO    = Math.max(5, r.chrono || 20);
   // un chrono modifié dans l'éditeur doit se voir tout de suite en jeu
   if (typeof S !== "undefined" && S && !S.tRunning) S.tLeft = CHRONO;
+  document.title = (PACK.meta.nom || "Partie") + " — Pupitre";
 }
+
+// Titre en deux lignes : le sous-titre passe dessous, en script jaune.
+// Un pack peut porter le sous-titre à la fin du nom (« Z'amours and Go » +
+// « and Go ») : on ne l'affiche alors qu'une fois.
+function titreParts() {
+  const nom = PACK.meta.nom || "", sous = PACK.meta.sousTitre || "";
+  const haut = sous && nom.endsWith(sous) ? nom.slice(0, -sous.length).trim() : nom;
+  return [haut || "Ma partie", sous];
+}
+
+const aDesOptions = o => !!(o && o.length);
 
 function categorieParId(id) { return PACK.categories.find(c => c.id === id); }
 function jokerDe(duo) { return (duo && duo.joker) || { gag: "", q: "", opts: [] }; }
@@ -2356,12 +2366,21 @@ function normaliserPack(pk) {
     note: String(o && o.note || ""),
     sponsor: (o && o.sponsor && o.sponsor.by) ? { by: String(o.sponsor.by), fine: String(o.sponsor.fine || "") } : null
   });
+  // Les ids finissent dans des attributs HTML : un pack reçu d'un tiers ne
+  // doit pas pouvoir y glisser de guillemet. On les réduit à [a-z0-9-], uniques.
+  const vus = new Set();
+  const idSur = (brut, defaut) => {
+    let id = String(brut || "").toLowerCase().replace(/[^a-z0-9-]/g, "") || defaut;
+    while (vus.has(id)) id += "x";
+    vus.add(id);
+    return id;
+  };
   return {
     version: pk.version || 1,
     meta: Object.assign({ nom: "Ma partie", sousTitre: "", auteur: "" }, pk.meta || {}),
     reglages: Object.assign({ m2Tours: 3, m3Coeurs: 3, chrono: 20 }, pk.reglages || {}),
     duos: (pk.duos || []).map((d, i) => ({
-      id: String(d.id || ("d" + i)), a: String(d.a || ""), b: String(d.b || ""),
+      id: idSur(d.id, "d" + i), a: String(d.a || ""), b: String(d.b || ""),
       joker: Object.assign({ gag: "", q: "", opts: [] }, q(d.joker || {}), { gag: String((d.joker || {}).gag || "") })
     })),
     manche1: (pk.manche1 || []).map(x => Object.assign(q(x), {
@@ -2369,7 +2388,7 @@ function normaliserPack(pk) {
       pts: Number(x.pts) > 0 ? Number(x.pts) : 1
     })),
     categories: (pk.categories || []).map((c, i) => ({
-      id: String(c.id || ("c" + i)), label: String(c.label || "Catégorie"), qcm: !!c.qcm,
+      id: idSur(c.id, "c" + i), label: String(c.label || "Catégorie"),
       questions: (c.questions || []).map(q)
     })),
     manche3: (pk.manche3 || []).map(q)
@@ -2380,7 +2399,8 @@ function normaliserPack(pk) {
 
 function validerPack(pk) {
   const e = [];
-  if (pk.duos.length < 2) e.push("Il faut au moins 2 duos.");
+  // 2 duos sortent en Manche 1 et 2 vont en finale : en dessous de 4, l'entonnoir est vide
+  if (pk.duos.length < 4) e.push("Il faut au moins 4 duos : 2 sortent en Manche 1, 2 vont en finale.");
   pk.duos.forEach(d => {
     if (!d.a.trim() || !d.b.trim()) e.push("Un duo n'a pas ses deux prénoms.");
     if (!d.joker.q.trim()) e.push(`${d.a} & ${d.b} n'a pas de question Joker.`);
@@ -2388,10 +2408,20 @@ function validerPack(pk) {
   if (!pk.manche1.length) e.push("La Manche 1 n'a aucune question.");
   const cats = pk.categories.filter(c => c.questions.length);
   if (cats.length < 1) e.push("Il faut au moins une catégorie avec des questions.");
-  const besoin = pk.duos.length * (Math.max(1, pk.reglages.m2Tours) - 1);
+  const besoin = Math.max(0, pk.duos.length - 2) * (Math.max(1, pk.reglages.m2Tours) - 1);
   const dispo = cats.reduce((t, c) => t + c.questions.length, 0);
   if (besoin > dispo) e.push(`Manche 2 : ${besoin} questions seront tirées mais la banque n'en contient que ${dispo}.`);
   if (!pk.manche3.length) e.push("La Manche 3 n'a aucune consigne.");
+
+  // QCM : une option vide s'afficherait vide à l'écran, une seule option n'est pas un choix
+  const qcm = (o, ou) => {
+    if (!o.opts.length) return;
+    if (o.opts.length < 2) e.push(`${ou} : un QCM a besoin d'au moins 2 options.`);
+    if (o.opts.some(x => !String(x).trim())) e.push(`${ou} : une option de QCM est vide.`);
+  };
+  pk.duos.forEach(d => qcm(d.joker, `Joker de ${d.a} & ${d.b}`));
+  pk.manche1.forEach((q, i) => qcm(q, `Manche 1, question ${i + 1}`));
+  pk.categories.forEach(c => c.questions.forEach((q, i) => qcm(q, `${c.label}, question ${i + 1}`)));
   return e;
 }
 
@@ -2454,7 +2484,6 @@ function hydrate(st) {
   st.cible = st.cible || {};
   DUOS.forEach(d => {
     if (st.cible[d.id] !== "a" && st.cible[d.id] !== "b") st.cible[d.id] = Math.random() < .5 ? "a" : "b";
-    if (typeof st.m1[d.id] !== "number") st.m1[d.id] = 0;
   });
 
   st.m2i   = Math.max(0, Math.min(st.m2i   || 0, st.m2order.length - 1));
@@ -2469,17 +2498,15 @@ function hydrate(st) {
 }
 
 function freshState() {
-  const z = {};
-  DUOS.forEach(d => z[d.id] = 0);
   const c = {};
   DUOS.forEach(d => c[d.id] = Math.random() < .5 ? "a" : "b");
   return {
     screen: "title",
     cible: c,
-    m1i: 0, m1: z, m1marks: {},
+    m1i: 0, m1marks: {},
     eliminated: [],
-    m2order: [], m2i: 0, m2step: 0, m2cat: {}, m2drawn: {}, m2used: {}, m2: {}, m2marks: {},
-    finalists: [], m3i: 0, m3: {}, m3marks: {}, m3revealed: false,
+    m2order: [], m2i: 0, m2step: 0, m2cat: {}, m2drawn: {}, m2used: {}, m2marks: {},
+    finalists: [], m3i: 0, m3marks: {},
     sudden: false, suddenWinner: null,
     resumed: false,
     revealCount: 0,
@@ -2488,8 +2515,33 @@ function freshState() {
   };
 }
 
+let AUTOTEST = false;   // l'auto-test joue une partie : il ne doit pas écraser la vraie
+
 function save() {
+  if (AUTOTEST) return;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+
+/* Les scores ne sont jamais stockés : on les recalcule depuis les cases
+   cochées. Un compteur tenu à côté des cases finit toujours par diverger
+   (un aller-retour entre manches, un barème changé en cours de route). */
+function scoresM1() {
+  const s = {};
+  DUOS.forEach(d => s[d.id] = 0);
+  Object.keys(S.m1marks).forEach(qi => {
+    const q = M1[qi];
+    if (q) Object.keys(S.m1marks[qi]).forEach(id => { if (id in s) s[id] += q.pts; });
+  });
+  return s;
+}
+
+function scoresM2() {
+  const s = {};
+  S.m2order.forEach(id => {
+    s[id] = S.m2marks[id + "-j"] ? 3 : 0;
+    for (let k = 1; k < M2_TOURS; k++) if (S.m2marks[id + "-r" + k]) s[id] += 2;
+  });
+  return s;
 }
 
 function load() {
@@ -2555,7 +2607,7 @@ function paintTimer() {
   if (bar) {
     const CIRC = 2 * Math.PI * 30;
     bar.style.strokeDasharray = CIRC;
-    bar.style.strokeDashoffset = CIRC * (1 - S.tLeft / 20);
+    bar.style.strokeDashoffset = CIRC * (1 - S.tLeft / CHRONO);
   }
 }
 
@@ -2582,8 +2634,14 @@ function timerBlock() {
       <circle class="bar" id="tbar" cx="37" cy="37" r="30"></circle>
     </svg>
     <div class="count" id="count">${Math.ceil(S.tLeft)}</div>
-    <div class="subline" style="max-width:26ch">Les cibles écrivent.<br>20 secondes, feutres en l'air à la fin.</div>
+    <div class="subline" style="max-width:26ch">Les cibles écrivent.<br>${CHRONO} secondes, feutres en l'air à la fin.</div>
   </div>`;
+}
+
+// boutons du chrono, communs aux trois manches
+function boutonsChrono() {
+  return `<button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer " + CHRONO + " s"}<kbd>Espace</kbd></button>
+    <button class="btn ghost" data-act="treset">Remettre à ${CHRONO}</button>`;
 }
 
 /* ============================ RENDU ============================ */
@@ -2866,8 +2924,26 @@ function playHeartBreak(perdants) {
 /* ---------- transition entre deux questions de la Manche 1 ---------- */
 
 const FLASH_MS = 1150;
-let resetArmed = false;
-let resetTimerId = null;
+
+// Confirmation en deux clics plutôt que confirm() : si le navigateur a été
+// réglé sur « empêcher cette page de créer des boîtes de dialogue », confirm()
+// renvoie false en silence et le bouton semble mort. Le premier clic arme le
+// bouton (il affiche « Confirmer ? »), le second agit, 4 s plus tard il se désarme.
+let arme = null;
+let armeTimer = null;
+
+function confirme(cle) {
+  clearTimeout(armeTimer);
+  if (arme === cle) { arme = null; return true; }
+  arme = cle;
+  armeTimer = setTimeout(() => {
+    arme = null;
+    // pas de re-rendu pendant une saisie dans l'éditeur : il ferait perdre le curseur
+    if (!document.activeElement || !document.activeElement.matches("input, textarea, select")) render();
+  }, 4000);
+  return false;
+}
+const libelle = (cle, texte) => arme === cle ? "Confirmer ?" : texte;
 
 let flashKey = null;
 let flashTimer = null;
@@ -2918,7 +2994,7 @@ let sponsorTimer = null;
 function currentSponsor() {
   if (S.screen === "m1") {
     const q = M1[S.m1i];
-    return q && q.sponsor ? Object.assign({ key: "m1-" + S.m1i }, q.sponsor) : null;
+    return q && q.sponsor && q.sponsor.by.trim() ? Object.assign({ key: "m1-" + S.m1i }, q.sponsor) : null;
   }
   if (S.screen === "m2" && S.m2step > 0) {
     const d = m2duo();
@@ -2930,7 +3006,7 @@ function currentSponsor() {
     if (!cat) return null;
     const item = cat.questions[S.m2drawn[rk]];
     const sp = item && item.sponsor;
-    return sp ? Object.assign({ key: rk + "-" + S.m2drawn[rk] }, sp) : null;
+    return sp && sp.by.trim() ? Object.assign({ key: rk + "-" + S.m2drawn[rk] }, sp) : null;
   }
   return null;
 }
@@ -3170,7 +3246,7 @@ function railBase(label, right) {
   return `<div class="eyebrow">${label}</div>
     <div class="spacer"></div>
     ${right || ""}
-    <button class="btn ${resetArmed ? "primary" : "ghost"}" data-act="reset" title="Repartir de l'écran de titre" style="margin-right:8px">${resetArmed ? "Confirmer ?" : "⟲ Reset"}</button>
+    <button class="btn ${arme === "reset" ? "primary" : "ghost"}" data-act="reset" title="Repartir de l'écran de titre" style="margin-right:8px">${libelle("reset", "⟲ Reset")}</button>
     <button class="btn ghost" data-act="panel">Scores<kbd>S</kbd></button>`;
 }
 
@@ -3186,19 +3262,22 @@ const SCREENS = {};
 
 SCREENS.title = {
   top: () => railBase("Pupitre animateur"),
-  stage: () => `
-    <h1 class="title-h1"><span class="t-z">Z'amours</span><span class="t-go">and&nbsp;Go</span></h1>
+  stage: () => {
+    const [haut, sous] = titreParts();
+    return `
+    <h1 class="title-h1"><span class="t-z">${esc(haut)}</span>${sous ? `<span class="t-go">${esc(sous).replace(/ /g, "&nbsp;")}</span>` : ""}</h1>
     <div class="subline" style="max-width:56ch">
-      6 duos · 3 manches · <em>remise à zéro après la Manche 1</em>.<br>
+      ${DUOS.length} duos · 3 manches · <em>remise à zéro après la Manche 1</em>.<br>
       Pilotage clavier : <kbd>→</kbd> avancer · <kbd>Espace</kbd> chrono · <kbd>R</kbd> révéler · <kbd>S</kbd> scores.
     </div>
-    <div class="warn">Les points de la Manche 1 ne servent qu'à qualifier : tout le monde repart de zéro pour la Manche 2.</div>`,
+    <div class="warn">Les points de la Manche 1 ne servent qu'à qualifier : tout le monde repart de zéro pour la Manche 2.</div>`;
+  },
   bottom: () => `<button class="btn primary" data-act="go" data-to="m1rules">Commencer la Manche 1</button>
     <button class="btn ghost" data-act="openresume" style="margin-left:10px">Reprendre en Manche 2</button>
     <button class="btn ghost" data-act="openresume3" style="margin-left:10px">Reprendre en Manche 3</button>
     <button class="btn ghost" data-act="openedit" style="margin-left:10px">✏️ Éditeur</button>
     <div class="spacer"></div>
-    <button class="btn ghost" data-act="reset">Repartir de zéro</button>`
+    <button class="btn ghost" data-act="reset">${libelle("reset", "Repartir de zéro")}</button>`
 };
 
 /* ---------- manche 1 ---------- */
@@ -3208,6 +3287,7 @@ SCREENS.m1 = {
   stage: () => {
     const q = M1[S.m1i];
     const isE = q.type === "eclair";
+    const qcm = aDesOptions(q.opts);
     const marks = S.m1marks[S.m1i] || {};
     return `
       <div class="kicker">
@@ -3215,22 +3295,23 @@ SCREENS.m1 = {
         <span>${q.pts} point${q.pts > 1 ? "s" : ""}</span>
         <span style="color:var(--muted)">${isE ? "révélation simultanée — tout le monde en même temps" : "révélation duo par duo — on étire"}</span>
       </div>
-      <h1 class="question ${qCls(q.q, qcmOpen(q.opts))}"><span class="qtxt">${qText(q.q)}</span></h1>
-      ${rolesBand(null, 0, !!q.opts)}
+      <h1 class="question ${qCls(q.q, qcm)}"><span class="qtxt">${qText(q.q)}</span></h1>
+      ${rolesBand(null, 0, qcm)}
       ${q.note ? `<div class="subline"><em>${esc(q.note)}</em></div>` : ""}
-      ${q.opts ? qcmBlock(q.opts) : ""}
+      ${qcm ? qcmBlock(q.opts) : ""}
       ${timerBlock()}
       <div>
-        <div class="eyebrow" style="margin-bottom:11px">Qui a matché ? — <span style="color:var(--amber)">le prénom souligné écrit sur l'ardoise, l'autre devine</span></div>
+        <div class="eyebrow" style="margin-bottom:11px">Qui a matché ? — <span style="color:var(--amber)">${qcm
+          ? "les DEUX doivent avoir choisi la même lettre"
+          : "le prénom souligné écrit sur l'ardoise, l'autre devine"}</span></div>
         <div class="scorerow">
           ${DUOS.map(d => `<button class="chip ${marks[d.id] ? "on" : ""}" data-act="m1mark" data-id="${d.id}">
-            <span class="mark">${marks[d.id] ? "✓" : ""}</span>${duoNameCible(d, S.m1i)}</button>`).join("")}
+            <span class="mark">${marks[d.id] ? "✓" : ""}</span>${qcm ? esc(duoName(d)) : duoNameCible(d, S.m1i)}</button>`).join("")}
         </div>
       </div>`;
   },
   bottom: () => `
-    <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
-    <button class="btn ghost" data-act="treset">Remettre à 20</button>
+    ${boutonsChrono()}
     <div class="spacer"></div>
     <button class="btn ghost" data-act="m1prev" ${S.m1i === 0 ? "disabled" : ""}>Précédente<kbd>←</kbd></button>
     <button class="btn primary" data-act="m1next">${S.m1i === M1.length - 1 ? "Clore la Manche 1" : "Question suivante"}<kbd>→</kbd></button>`
@@ -3274,12 +3355,13 @@ SCREENS.choix = {
         <h3>Une partie vierge</h3>
         <p>La structure du jeu, sans aucun contenu. Tu crées tes duos, tes jokers et tes questions depuis zéro.</p>
       </button>
-      <button class="step" data-act="openpack" style="cursor:pointer;text-align:left">
+      <button class="step" data-act="importpack" style="cursor:pointer;text-align:left">
         <div class="stepnum">3</div>
         <h3>Importer un pack</h3>
         <p>Tu as reçu un fichier <code>.json</code> créé par quelqu'un d'autre ? Charge-le directement.</p>
       </button>
-    </div>`,
+    </div>
+    <div class="subline" id="packmsg"></div>`,
   bottom: () => ``
 };
 
@@ -3308,7 +3390,8 @@ SCREENS.pack = {
     <button class="btn primary" data-act="openedit">✏️ Modifier le contenu</button>
     <button class="btn ghost" data-act="exportpack" style="margin-left:10px">⬇ Exporter en JSON</button>
     <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>
-    <button class="btn ghost" data-act="usepack" data-which="demo" style="margin-left:10px">Recharger le pack Z'amours</button>`
+    <button class="btn ${arme === "usepack-demo" ? "primary" : "ghost"}" data-act="usepack" data-which="demo" style="margin-left:10px"
+      title="Remplace tout le contenu actuel">${libelle("usepack-demo", "Recharger le pack Z'amours")}</button>`
 };
 
 SCREENS.resume3 = {
@@ -3335,15 +3418,19 @@ SCREENS.resume3 = {
 
 /* ---------- écrans « comment on joue » ---------- */
 
-const RULES = {
+// Une fonction, pas une constante : les textes citent les réglages du pack,
+// qui n'est chargé qu'au démarrage et peut changer dans l'éditeur.
+function regles() {
+  const ex = esc((DUOS[0] && DUOS[0].b) || "Kelly");   // prénom d'exemple, pris dans le pack
+  return {
   m1rules: {
     tag: "Manche 1 · Qualifications",
-    lead: "Mêmes questions pour les 6 duos. Les 2 derniers sortent — puis tout le monde repart de zéro.",
+    lead: `Mêmes questions pour les ${DUOS.length} duos. Les 2 derniers sortent — puis tout le monde repart de zéro.`,
     steps: [
       { icon: "slate", t: "La question porte sur UNE personne",
-        d: "C'est le <b>prénom surligné en jaune</b>. Exemple : « le plat préféré de <b>Kelly</b> » → c'est <b>Kelly</b>, et personne d'autre, qui écrit <b>SON</b> vrai plat préféré." },
+        d: `C'est le <b>prénom surligné en jaune</b>. Exemple : « le plat préféré de <b>${ex}</b> » → c'est <b>${ex}</b>, et personne d'autre, qui écrit <b>SON</b> vrai plat préféré.` },
       { icon: "think", t: "L'autre doit le deviner",
-        d: "L'autre membre du duo n'écrit pas <b>son</b> plat à lui : il faut écrire <b>le plat que Kelly a mis</b> sur son ardoise." },
+        d: `L'autre membre du duo n'écrit pas <b>son</b> plat à lui : il faut écrire <b>le plat que ${ex} a mis</b> sur son ardoise.` },
       { icon: "heart", t: "Même réponse = des points",
         d: "On retourne les deux ardoises. Si elles disent la même chose, le duo marque. <b>C'est la personne surlignée qui tranche</b>, pas l'animateur." }
     ],
@@ -3370,12 +3457,13 @@ const RULES = {
         d: "Fini le prénom surligné : sur chaque question, <b>les deux membres écrivent leur propre réponse en même temps</b>, sans se concerter." },
       { icon: "reveal", t: "Même réponse ou rien",
         d: "Les deux ardoises se retournent en même temps. <b>Même chose écrite = tout va bien.</b> Réponses différentes = le duo perd un cœur." },
-      { icon: "heart", t: "3 cœurs, et c'est tout",
-        d: "Chaque duo démarre avec <b>3 cœurs</b>. Le premier qui les perd tous est éliminé — <b>le dernier duo debout gagne</b>." }
+      { icon: "heart", t: `${M3_LIVES} cœur${M3_LIVES > 1 ? "s" : ""}, et c'est tout`,
+        d: `Chaque duo démarre avec <b>${M3_LIVES} cœur${M3_LIVES > 1 ? "s" : ""}</b>. Le premier qui les perd tous est éliminé — <b>le dernier duo debout gagne</b>.` }
     ],
     foot: "Les 2 duos jouent la même consigne en même temps. « Chien » et « un chien », ça compte — « bleu » et « bleu clair », c'est le Jury du Fail qui tranche, et sa décision est sans appel. Égalité à la fin ? Mort subite."
   }
-};
+  };
+}
 
 const RULE_ICONS = {
   slate: `<rect x="12" y="18" width="84" height="62" rx="7"/><line x1="28" y1="40" x2="74" y2="40"/><line x1="28" y1="55" x2="60" y2="55"/><path d="M84 74l14-14 8 8-14 14-10 2z" class="acc"/>`,
@@ -3388,10 +3476,11 @@ const RULE_ICONS = {
 };
 
 function rulesScreen(key) {
-  const r = RULES[key];
   return {
-    top: () => railBase(`${r.tag} · <strong>Comment on joue</strong>`),
-    stage: () => `
+    top: () => railBase(`${regles()[key].tag} · <strong>Comment on joue</strong>`),
+    stage: () => {
+      const r = regles()[key];
+      return `
       <div class="kicker"><span class="tag">Comment on joue</span><span>${esc(r.lead)}</span></div>
       <div class="steps">
         ${r.steps.map((st, i) => `
@@ -3402,7 +3491,8 @@ function rulesScreen(key) {
             <p>${st.d}</p>
           </div>`).join("")}
       </div>
-      <div class="warn">${r.foot}</div>`,
+      <div class="warn">${r.foot}</div>`;
+    },
     bottom: () => `
       <div class="spacer"></div>
       <button class="btn primary" data-act="go" data-to="${key.replace("rules", "")}">C'est parti<kbd>→</kbd></button>`
@@ -3418,15 +3508,18 @@ SCREENS.m3rules = rulesScreen("m3rules");
 SCREENS.m1res = {
   top: () => railBase("Manche 1 · Classement et élimination"),
   stage: () => {
-    const r = rank(S.m1, DUOS);
-    const cut = r[3] ? (S.m1[r[3].id] || 0) : null;
-    const tied = r.filter(d => (S.m1[d.id] || 0) === cut).length > 1 && cut !== null;
+    const sc = scoresM1();
+    const r = rank(sc, DUOS);
+    // barre = score du dernier qualifié (2 duos sortent)
+    const barre = r[r.length - 3];
+    const cut = barre ? sc[barre.id] : null;
+    const tied = r.filter(d => sc[d.id] === cut).length > 1 && cut !== null;
     return `
       <div class="kicker"><span class="tag">Élimination</span><span>désigne les 2 duos qui sortent</span></div>
       ${tied ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
       <div class="ranks">
-        ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${(S.m1[d.id] || 0) === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
-          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${S.m1[d.id] || 0}</span></button>`).join("")}
+        ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${sc[d.id] === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
+          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id]}</span></button>`).join("")}
       </div>
       <div class="subline">Les 2 duos désignés deviennent le <em>Jury du Fail</em>, armés des <em>buzzers poulets</em>. Ils arbitrent l'ex æquo de fin de Manche 2 et décernent le Prix du Fail à la toute fin.</div>`;
   },
@@ -3445,10 +3538,9 @@ function qCls(t, compact) {
   return compact ? base + " compact" : base;
 }
 
-// Toute question à QCM s'affiche en bulle compacte, options masquées ou non :
-// la place des 3 options est réservée d'avance, et la bulle ne change pas de
-// taille au moment où on appuie sur R.
-function qcmOpen(opts) { return !!opts; }
+// Toute question à QCM s'affiche en bulle compacte (qCls(t, true)), options
+// masquées ou non : la place des options est réservée d'avance, et la bulle ne
+// change pas de taille au moment où on appuie sur R.
 
 function m2duo() { return byId(S.m2order[S.m2i]); }
 
@@ -3477,13 +3569,13 @@ function heartRow(id) {
 function m2IsQcm() {
   const d = m2duo();
   if (!d) return false;
-  if (S.m2step === 0) return !!(jokerDe(d).opts || []).length;
+  if (S.m2step === 0) return aDesOptions(jokerDe(d).opts);
   const rk = d.id + "-r" + S.m2step;
   const catKey = S.m2cat[rk];
   if (!catKey) return false;
   const cat = categorieParId(catKey);
   const item = cat && cat.questions[S.m2drawn[rk]];
-  return !!(item && item.opts && item.opts.length);
+  return !!item && aDesOptions(item.opts);
 }
 
 SCREENS.m2 = {
@@ -3500,15 +3592,15 @@ SCREENS.m2 = {
       const j = jokerDe(d);
       // le faux départ occupe la place de la question tant qu'il n'a pas été joué
       const montreGag = !!(j.gag && j.gag.trim()) && !gagFait[d.id + "|joker"];
-      const marks = S.m2marks[key + "-j"];
+      const qcm = aDesOptions(j.opts);
       return `
         <div class="kicker"><span class="tag">🃏 Joker</span><span>3 points</span><span style="color:var(--muted)">sur-mesure — c'est le moment de la manche</span></div>
         ${montreGag ? `
           <h1 class="question is-gag ${qCls(j.gag)}"><span class="qtxt">${esc(j.gag)}</span><i class="strike"></i></h1>`
         : `
-          <h1 class="question ${qCls(j.q, qcmOpen(j.opts))}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
-          ${rolesBand(d, S.m2step, !!j.opts)}`}
-        ${j.opts ? qcmBlock(j.opts) : ""}
+          <h1 class="question ${qCls(j.q, qcm)}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
+          ${rolesBand(d, S.m2step, qcm)}`}
+        ${qcm ? qcmBlock(j.opts) : ""}
         ${timerBlock()}
         ${awardRow(key + "-j", 3)}`;
     }
@@ -3533,11 +3625,11 @@ SCREENS.m2 = {
     const qi = S.m2drawn[roundKey];
     const item = cat.questions[qi] || { q: "", opts: [] };
     const qtext = item.q;
-    const opts = (item.opts && item.opts.length) ? item.opts : null;
+    const opts = aDesOptions(item.opts) ? item.opts : null;
     return `
       <div class="kicker"><span class="tag">${esc(cat.label)}</span><span>2 points</span>
-        ${cat.qcm ? '<span style="color:var(--muted)">QCM — les DEUX doivent choisir la même lettre</span>' : ""}</div>
-      <h1 class="question ${qCls(qtext, qcmOpen(opts))}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
+        ${opts ? '<span style="color:var(--muted)">QCM — les DEUX doivent choisir la même lettre</span>' : ""}</div>
+      <h1 class="question ${qCls(qtext, !!opts)}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
       ${rolesBand(d, S.m2step, !!opts)}
       ${opts ? qcmBlock(opts) : ""}
       ${timerBlock()}
@@ -3548,8 +3640,7 @@ SCREENS.m2 = {
     const needCat = S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step];
     const last = S.m2step === M2_TOURS - 1 && S.m2i === S.m2order.length - 1;
     return `
-      <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
-      <button class="btn ghost" data-act="treset">Remettre à 20</button>
+      ${boutonsChrono()}
       <div class="spacer"></div>
       <button class="btn ghost" data-act="m2prev" ${S.m2i === 0 && S.m2step === 0 ? "disabled" : ""}>Précédent<kbd>←</kbd></button>
       <button class="btn primary" data-act="m2next" ${needCat ? "disabled" : ""}>${last ? "Clore la Manche 2" : "Suivant"}<kbd>→</kbd></button>`;
@@ -3568,7 +3659,7 @@ function qcmBlock(opts) {
     return `<div class="hidden-note">Options masquées — lis l'intitulé, puis <kbd>R</kbd> pour les révéler une par une.</div>`;
   }
   return `<div class="options">${opts.slice(0, shown).map((o, i) =>
-    `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABC"[i]}</span><span>${esc(o)}</span></div>`).join("")}</div>`;
+    `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABCDEF"[i]}</span><span>${esc(o)}</span></div>`).join("")}</div>`;
 }
 
 function awardRow(markKey, pts) {
@@ -3592,16 +3683,16 @@ function awardRow(markKey, pts) {
 SCREENS.m2res = {
   top: () => railBase("Manche 2 · Classement et finalistes"),
   stage: () => {
-    const pool = alive();
-    const r = rank(S.m2, pool);
-    const cut = r[1] ? (S.m2[r[1].id] || 0) : null;
-    const tied = r.filter(d => (S.m2[d.id] || 0) === cut).length > 1 && cut !== null;
+    const sc = scoresM2();
+    const r = rank(sc, alive());
+    const cut = r[1] ? (sc[r[1].id] || 0) : null;
+    const tied = r.filter(d => (sc[d.id] || 0) === cut).length > 1 && cut !== null;
     return `
       <div class="kicker"><span class="tag">Finalistes</span><span>désigne les 2 duos qui passent</span></div>
       ${tied ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
       <div class="ranks">
-        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked" : ""} ${(S.m2[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
-          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${S.m2[d.id] || 0}</span></button>`).join("")}
+        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked" : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
+          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id] || 0}</span></button>`).join("")}
       </div>
       <div class="subline">Sur les duos désignés, la pastille marque <em>qualifié</em>, pas éliminé.</div>`;
   },
@@ -3651,16 +3742,14 @@ SCREENS.m3 = {
   },
   bottom: () => {
     if (S.sudden) return `
-      <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
-      <button class="btn ghost" data-act="treset">Remettre à 20</button>
+      ${boutonsChrono()}
       <div class="spacer"></div>
       <span class="eyebrow" style="margin-right:14px">Personne n'a matché ?</span>
       <button class="btn primary" data-act="m3next">Question suivante<kbd>→</kbd></button>`;
     const ko = S.finalists.filter(m3Out);
     const egalite = m3Lives(S.finalists[0]) === m3Lives(S.finalists[1]);
     return `
-    <button class="btn" data-act="timer">${S.tRunning ? "Arrêter" : "Lancer 20 s"}<kbd>Espace</kbd></button>
-    <button class="btn ghost" data-act="treset">Remettre à 20</button>
+    ${boutonsChrono()}
     <div class="spacer"></div>
     <button class="btn ghost" data-act="m3prev" ${S.m3i === 0 ? "disabled" : ""}>Précédente<kbd>←</kbd></button>
     <button class="btn primary" data-act="m3next" ${ko.length ? "disabled" : ""}>Question suivante<kbd>→</kbd></button>
@@ -3695,9 +3784,10 @@ function endResult() {
         : `${restants} cœurs contre ${Math.min(lx, ly)} à la fin de la Longueur d'onde.`,
       coeurs: restants };
   }
-  const r = rank(S.m2, alive());
+  const sc = scoresM2();
+  const r = rank(sc, alive());
   return { egalite: false, win: r[0] ? duoName(r[0]) : "—",
-    sub: `Partie close à la fin de la Manche 2, sur le score de la Manche 2 : ${r[0] ? (S.m2[r[0].id] || 0) : 0} points.` };
+    sub: `Partie close à la fin de la Manche 2, sur le score de la Manche 2 : ${r[0] ? (sc[r[0].id] || 0) : 0} points.` };
 }
 
 SCREENS.end = {
@@ -3708,16 +3798,17 @@ SCREENS.end = {
       <div class="kicker"><span class="tag">Vainqueur</span></div>
       <h1 class="winner">${esc(r.win)}</h1>
       <div class="subline">${esc(r.sub)}</div>
-      <div class="warn"><strong>Il reste le Prix du Fail.</strong> Le Jury — ${S.eliminated.map(id => duoName(byId(id))).join(" et ") || "les duos sortis en Manche 1"} — désigne la pire réponse de la soirée et remet son prix. C'est eux qui ont le mot de la fin.</div>`;
+      <div class="warn"><strong>Il reste le Prix du Fail.</strong> Le Jury — ${S.eliminated.map(id => esc(duoName(byId(id)))).join(" et ") || "les duos sortis en Manche 1"} — désigne la pire réponse de la soirée et remet son prix. C'est eux qui ont le mot de la fin.</div>`;
   },
-  bottom: () => `<button class="btn ghost" data-act="reset">Repartir de zéro</button>`
+  bottom: () => `<button class="btn ghost" data-act="reset">${libelle("reset", "Repartir de zéro")}</button>`
 };
 
 /* ============================ PANNEAU SCORES ============================ */
 
 function panelHTML() {
+  const s1 = scoresM1(), s2 = scoresM2();
   const row = (d, sc, gone) => `<tr class="${gone ? "gone" : ""}">
-    <td>${esc(duoName(d))}${d.note ? ` <span style="color:var(--muted);font-size:13px">(${esc(d.note)})</span>` : ""}</td>
+    <td>${esc(duoName(d))}</td>
     <td style="width:74px"><button class="cible" data-act="cible" data-id="${d.id}">départ : ${esc(S.cible[d.id] === "a" ? d.a : d.b)}</button></td>
     <td class="num" style="width:52px">${sc}</td></tr>`;
 
@@ -3731,16 +3822,16 @@ function panelHTML() {
     ${S.resumed
       ? `<div class="subline" style="margin-bottom:26px">Jouée lors d'une séance précédente — les scores n'ont pas été ressaisis, ils ne comptent plus.</div>`
       : `<table><thead><tr><th>Duo</th><th>Cible</th><th style="text-align:right">Pts</th></tr></thead>
-      <tbody>${rank(S.m1, DUOS).map(d => row(d, S.m1[d.id] || 0, S.eliminated.includes(d.id))).join("")}</tbody></table>`}
+      <tbody>${rank(s1, DUOS).map(d => row(d, s1[d.id], S.eliminated.includes(d.id))).join("")}</tbody></table>`}
 
     <h2>Manche 2 — repart de zéro</h2>
     ${S.resumed === "m3"
       ? `<div class="subline" style="margin-bottom:26px">Jouée lors d'une séance précédente — les scores n'ont pas été ressaisis.</div>`
       : `<table><thead><tr><th>Duo</th><th>Cible</th><th style="text-align:right">Pts</th></tr></thead>
-      <tbody>${rank(S.m2, alive()).map(d => row(d, S.m2[d.id] || 0, false)).join("")}</tbody></table>`}
+      <tbody>${rank(s2, alive()).map(d => row(d, s2[d.id] || 0, false)).join("")}</tbody></table>`}
 
     ${S.finalists.length ? `<h2>Finale</h2><table><tbody>
-      ${S.finalists.map(id => `<tr><td>${esc(duoName(byId(id)))}</td><td class="num">${S.m3[id] || 0}</td></tr>`).join("")}
+      ${S.finalists.map(id => `<tr><td>${esc(duoName(byId(id)))}</td><td class="num">${heartRow(id)}</td></tr>`).join("")}
     </tbody></table>` : ""}
 
     ${S.eliminated.length ? `<h2>Jury du Fail</h2>
@@ -3759,45 +3850,41 @@ function bindAll() {
   if (S.screen === "edit") brancherEditeur();
 }
 
+// Retire toutes les animations en cours et oublie ce qu'elles ont déjà joué.
+function nettoyerEffets() {
+  announceKey = null; lastScreen = null; sponsorKey = null; flashKey = null;
+  clearTimeout(announceTimer); clearTimeout(splashTimer); clearTimeout(sponsorTimer);
+  hbreakPending = null; clearTimeout(hbreakTimer);
+  annulerGag(); derniereQuestion = null;
+  Object.keys(gagFait).forEach(k => delete gagFait[k]);
+  document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
+  victoryKey = null; clearTimeout(victoryTimer);
+}
+
+// Un pack incomplet ne se joue pas : on montre ce qui manque au lieu de planter.
+function jouable() {
+  if (!validerPack(PACK).length) return true;
+  S.screen = "pack";
+  return false;
+}
+
 function act(a, data) {
   switch (a) {
     case "panel": S.panel = !S.panel; break;
-    // Deux clics au lieu d'un confirm() : si le navigateur a été réglé sur
-    // « empêcher cette page de créer des boîtes de dialogue », confirm()
-    // renvoie false en silence et le bouton semble mort.
     case "reset":
-      if (!resetArmed) {
-        resetArmed = true;
-        clearTimeout(resetTimerId);
-        resetTimerId = setTimeout(() => { resetArmed = false; render(); }, 4000);
-        break;
-      }
-      resetArmed = false;
-      clearTimeout(resetTimerId);
-      {
-        S = freshState();
-        announceKey = null;
-        lastScreen = null;
-        clearTimeout(announceTimer);
-        clearTimeout(splashTimer);
-        clearTimeout(sponsorTimer);
-        sponsorKey = null;
-        hbreakPending = null; clearTimeout(hbreakTimer);
-        annulerGag(); derniereQuestion = null;
-        Object.keys(gagFait).forEach(k => delete gagFait[k]);
-        document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
-        victoryKey = null; clearTimeout(victoryTimer);
-      }
+      if (!confirme("reset")) break;
+      S = freshState();
+      nettoyerEffets();
       break;
-    case "go": resetTimer(); S.revealCount = 0; S.screen = data.to; break;
+    case "go":
+      if (data.to === "m1rules" && !jouable()) break;
+      resetTimer(); S.revealCount = 0; S.screen = data.to; break;
     case "timer": startTimer(); return;
     case "treset": resetTimer(); break;
 
     case "m1mark": {
       const m = S.m1marks[S.m1i] || (S.m1marks[S.m1i] = {});
-      const p = M1[S.m1i].p;
-      if (m[data.id]) { delete m[data.id]; S.m1[data.id] -= p; }
-      else { m[data.id] = 1; S.m1[data.id] = (S.m1[data.id] || 0) + p; }
+      if (m[data.id]) delete m[data.id]; else m[data.id] = 1;
       break;
     }
     case "m1next":
@@ -3814,10 +3901,13 @@ function act(a, data) {
       break;
     }
     case "usepack": {
+      // au premier lancement il n'y a rien à perdre ; ailleurs, le contenu actuel serait écrasé
+      if (S.screen !== "choix" && !confirme("usepack-" + data.which)) break;
       const pk = data.which === "vide" ? PACK_VIDE : PACK_DEFAUT;
       appliquerPack(normaliserPack(JSON.parse(JSON.stringify(pk))));
       sauverPack();
       S = freshState();
+      nettoyerEffets();
       break;
     }
     case "openpack": S.screen = "pack"; break;
@@ -3827,6 +3917,7 @@ function act(a, data) {
     case "importpack": importerPack(); break;
 
     case "openresume3":
+      if (!jouable()) break;
       S = freshState();
       S.screen = "resume3";
       break;
@@ -3843,13 +3934,14 @@ function act(a, data) {
       break;
     }
     case "startresume3":
-      S.m3marks = {}; S.m3i = 0; S.m3 = {};
+      S.m3marks = {}; S.m3i = 0;
       S.resumed = "m3";
       resetTimer();
       S.screen = "m3rules";
       break;
 
     case "openresume":
+      if (!jouable()) break;
       S = freshState();
       S.screen = "resume";
       break;
@@ -3862,7 +3954,6 @@ function act(a, data) {
     }
     case "startresume":
       S.eliminated = DUOS.filter(d => !S.m2order.includes(d.id)).map(d => d.id);
-      S.m2order.forEach(id => S.m2[id] = 0);
       S.m2i = 0; S.m2step = 0; S.m2cat = {}; S.m2drawn = {}; S.m2used = {}; S.m2marks = {};
       S.resumed = "m2";
       resetTimer();
@@ -3870,10 +3961,10 @@ function act(a, data) {
       break;
 
     case "startm2":
+      // repartir d'une manche vierge, même après un aller-retour depuis l'élimination
       S.m2order = alive().map(d => d.id);
-      alive().forEach(d => S.m2[d.id] = 0);
       S.m2i = 0; S.m2step = 0; S.revealCount = 0;
-      S.m2used = {};
+      S.m2cat = {}; S.m2drawn = {}; S.m2used = {}; S.m2marks = {};
       resetTimer();
       S.screen = "m2rules";
       break;
@@ -3893,12 +3984,9 @@ function act(a, data) {
       S.revealCount = 0;
       break;
     }
-    case "m2mark": {
-      const k = data.key, p = +data.pts, id = k.split("-")[0];
-      if (S.m2marks[k]) { delete S.m2marks[k]; S.m2[id] -= p; }
-      else { S.m2marks[k] = 1; S.m2[id] = (S.m2[id] || 0) + p; }
+    case "m2mark":
+      if (S.m2marks[data.key]) delete S.m2marks[data.key]; else S.m2marks[data.key] = 1;
       break;
-    }
     case "m2next":
       resetTimer(); S.revealCount = 0;
       if (S.m2i < S.m2order.length - 1) S.m2i++;
@@ -3919,8 +4007,8 @@ function act(a, data) {
     }
     case "stophere": S.finalists = []; S.screen = "end"; break;
     case "startm3":
-      S.finalists.forEach(id => S.m3[id] = 0);
-      S.m3i = 0; resetTimer(); S.screen = "m3rules";
+      S.m3marks = {}; S.m3i = 0; S.sudden = false; S.suddenWinner = null;
+      resetTimer(); S.screen = "m3rules";
       break;
     case "m3mark": {
       const k = S.m3i + "|" + data.id;
@@ -3951,7 +4039,9 @@ function act(a, data) {
 /* ============================ CLAVIER ============================ */
 
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+  // écrans de préparation : aucun raccourci de jeu (Espace y lançait le chrono en fond)
+  if (["edit", "pack", "choix"].includes(S.screen)) return;
   const k = e.key.toLowerCase();
 
   if (k === "s") { e.preventDefault(); act("panel", {}); return; }
@@ -4034,12 +4124,20 @@ function blocOpts(chemin, opts) {
 }
 
 function blocSponsor(chemin, sp) {
+  const actif = !!(sp && sp.by.trim());
   return `<details class="ed-det" ${sp ? "open" : ""}>
-    <summary>Bandeau sponsor ${sp ? "— actif" : "(facultatif)"}</summary>
+    <summary>Bandeau sponsor ${actif ? "— actif" : "(facultatif)"}</summary>
     ${champ("Présenté par", chemin + ".by", sp ? sp.by : "")}
     ${champ("Mention en petit", chemin + ".fine", sp ? sp.fine : "")}
     <div class="ed-hint">Laisse « Présenté par » vide pour désactiver le bandeau.</div>
   </details>`;
+}
+
+// ✕ de suppression : deux clics, comme le Reset — un duo ou une catégorie
+// entière ne doit pas disparaître sur un clic égaré.
+function boutonSuppr(op, i, titre) {
+  const cle = "ed-" + op + "-" + i;
+  return `<button class="ed-x danger ${arme === cle ? "arme" : ""}" data-act="ed" data-op="${op}" data-i="${i}" title="${titre}">${arme === cle ? "Supprimer ?" : "✕"}</button>`;
 }
 
 function boutonsOrdre(op, i, n) {
@@ -4057,7 +4155,7 @@ function ongletDuos() {
       <div class="ed-head">
         <strong>${esc(d.a || "?")} &amp; ${esc(d.b || "?")}</strong>
         ${boutonsOrdre("moveduo", i, PACK.duos.length)}
-        <button class="ed-x danger" data-act="ed" data-op="delduo" data-i="${i}" title="Supprimer ce duo">✕</button>
+        ${boutonSuppr("delduo", i, "Supprimer ce duo")}
       </div>
       <div class="ed-row2">
         ${champ("Prénom 1", `duos.${i}.a`, d.a)}
@@ -4078,7 +4176,7 @@ function ongletM1() {
       <div class="ed-head">
         <strong>Question ${i + 1}</strong>
         ${boutonsOrdre("movem1", i, PACK.manche1.length)}
-        <button class="ed-x danger" data-act="ed" data-op="delm1" data-i="${i}" title="Supprimer">✕</button>
+        ${boutonSuppr("delm1", i, "Supprimer cette question")}
       </div>
       <div class="ed-row2">
         <label class="ed-f"><span>Régime</span>
@@ -4104,9 +4202,9 @@ function ongletCats() {
         <div class="ed-card compact">
           <div class="ed-head">
             <strong>${esc(x.label)}</strong>
-            <span class="ed-count">${x.questions.length} question${x.questions.length > 1 ? "s" : ""}${x.qcm ? " · QCM" : ""}</span>
+            <span class="ed-count">${x.questions.length} question${x.questions.length > 1 ? "s" : ""}</span>
             <button class="ed-add" data-act="ed" data-op="opencat" data-id="${esc(x.id)}">Modifier</button>
-            <button class="ed-x danger" data-act="ed" data-op="delcat" data-i="${i}" title="Supprimer la catégorie">✕</button>
+            ${boutonSuppr("delcat", i, "Supprimer la catégorie et toutes ses questions")}
           </div>
         </div>`).join("")}
       <button class="ed-add gros" data-act="ed" data-op="addcat">+ Ajouter une catégorie</button>`;
@@ -4115,15 +4213,13 @@ function ongletCats() {
   return `<button class="ed-add" data-act="ed" data-op="closecat">← Toutes les catégories</button>
     <div class="ed-card">
       ${champ("Nom de la catégorie (emoji accepté)", `categories.${ci}.label`, c.label)}
-      <label class="ed-check"><input type="checkbox" data-path="categories.${ci}.qcm" ${c.qcm ? "checked" : ""}>
-        <span>Catégorie à QCM — rappelle à l'écran que les deux doivent choisir la même lettre</span></label>
     </div>
     ${c.questions.map((q, i) => `
       <div class="ed-card">
         <div class="ed-head">
           <strong>${i + 1}</strong>
           ${boutonsOrdre("moveq", i, c.questions.length)}
-          <button class="ed-x danger" data-act="ed" data-op="delq" data-i="${i}" title="Supprimer">✕</button>
+          ${boutonSuppr("delq", i, "Supprimer cette question")}
         </div>
         ${zone("Question", `categories.${ci}.questions.${i}.q`, q.q, 2)}
         ${blocOpts(`categories.${ci}.questions.${i}.opts`, q.opts)}
@@ -4140,7 +4236,7 @@ function ongletM3() {
         <div class="ed-head">
           <strong>${i + 1}</strong>
           ${boutonsOrdre("movem3", i, PACK.manche3.length)}
-          <button class="ed-x danger" data-act="ed" data-op="delm3" data-i="${i}" title="Supprimer">✕</button>
+          ${boutonSuppr("delm3", i, "Supprimer cette consigne")}
         </div>
         ${champ("Consigne", `manche3.${i}.q`, q.q)}
       </div>`).join("")}
@@ -4159,7 +4255,7 @@ function ongletReglages() {
       <div class="ed-sub">Règles</div>
       ${champ("Tours de table en Manche 2 (Joker compris)", "reglages.m2Tours", r.m2Tours, "number")}
       <div class="ed-hint">${M2_TOURS} tours = 1 Joker + ${M2_CATS} catégorie${M2_CATS > 1 ? "s" : ""}, soit ${M2_POINTS} points par duo.
-        ${PACK.duos.length ? `Avec ${PACK.duos.length} duos, ${PACK.duos.length * M2_CATS} questions seront tirées.` : ""}</div>
+        ${PACK.duos.length > 2 ? `Avec ${PACK.duos.length - 2} duos en Manche 2, ${(PACK.duos.length - 2) * M2_CATS} questions seront tirées.` : ""}</div>
       ${champ("Cœurs par duo en finale", "reglages.m3Coeurs", r.m3Coeurs, "number")}
       ${champ("Durée du chrono, en secondes", "reglages.chrono", r.chrono, "number")}
     </div>`;
@@ -4208,20 +4304,25 @@ function rafraichirStatut() {
 
 function brancherEditeur() {
   document.querySelectorAll(".editor [data-path]").forEach(n => {
-    n.addEventListener("change", () => {
+    // Le texte s'enregistre à chaque frappe : un onglet fermé en plein milieu
+    // ne perd rien. Les nombres attendent la sortie du champ, sinon le
+    // minimum forcé réécrirait le champ pendant qu'on le vide pour retaper.
+    const texte = n.tagName === "TEXTAREA" || n.type === "text";
+    n.addEventListener(texte ? "input" : "change", () => {
       const p = n.dataset.path;
       let v;
       if (n.type === "checkbox") v = n.checked;
       else if (n.type === "number") v = Math.max(1, parseInt(n.value, 10) || 1);
       else v = n.value;
 
-      // le sponsor n'existe que si « présenté par » est rempli
+      // Le sponsor garde ses deux champs même tant que « présenté par » est
+      // vide (sinon la mention tapée en premier serait perdue) ; le jeu
+      // l'ignore tant qu'il n'y a pas de « présenté par ».
       if (/\.sponsor\.(by|fine)$/.test(p)) {
         const base = p.replace(/\.(by|fine)$/, "");
-        const champ = p.endsWith(".by") ? "by" : "fine";
-        let sp = lireChemin(PACK, base) || { by: "", fine: "" };
-        sp[champ] = v;
-        ecrireChemin(PACK, base, sp.by.trim() ? sp : null);
+        const sp = lireChemin(PACK, base) || { by: "", fine: "" };
+        sp[p.endsWith(".by") ? "by" : "fine"] = v;
+        ecrireChemin(PACK, base, sp);
       } else {
         ecrireChemin(PACK, p, v);
       }
@@ -4238,6 +4339,7 @@ function brancherEditeur() {
 function actionEditeur(d) {
   const i = parseInt(d.i, 10);
   const cat = PACK.categories.find(x => x.id === CAT_OUVERTE);
+  if (d.op.startsWith("del") && d.op !== "delopt" && !confirme("ed-" + d.op + "-" + i)) return;
   switch (d.op) {
     case "tab": ONGLET = d.k; CAT_OUVERTE = null; break;
     case "addduo": PACK.duos.push({ id: idUnique("duo"), a: "", b: "", joker: { gag: "", q: "", opts: [] } }); break;
@@ -4246,7 +4348,7 @@ function actionEditeur(d) {
     case "addm1": PACK.manche1.push(Object.assign(questionVide(), { type: "eclair", pts: 1 })); break;
     case "delm1": PACK.manche1.splice(i, 1); break;
     case "movem1": deplacer(PACK.manche1, i, parseInt(d.dir, 10)); break;
-    case "addcat": PACK.categories.push({ id: idUnique("cat"), label: "Nouvelle catégorie", qcm: false, questions: [] }); break;
+    case "addcat": PACK.categories.push({ id: idUnique("cat"), label: "Nouvelle catégorie", questions: [] }); break;
     case "delcat": PACK.categories.splice(i, 1); break;
     case "opencat": CAT_OUVERTE = d.id; break;
     case "closecat": CAT_OUVERTE = null; break;
@@ -4261,6 +4363,8 @@ function actionEditeur(d) {
   }
   appliquerPack(PACK);
   sauverPack();
+  // une partie en cours peut citer le duo qu'on vient de retirer
+  S = hydrate(S);
 }
 
 function deplacer(arr, i, dir) {
@@ -4327,6 +4431,118 @@ function importerPack() {
   inp.click();
 }
 
+/* ============================ AUTO-TEST ============================
+   Ouvrir la page avec #autotest à la fin de l'adresse : joue une partie
+   complète avec le pack chargé, sans rien sauvegarder, puis affiche ce qui
+   casse. À relancer après toute modification du moteur.
+   ================================================================== */
+
+function autotest() {
+  const pb = [];
+  const sauve = S;
+  const packReel = PACK;
+  AUTOTEST = true;
+
+  const texteVisible = () => [...document.querySelectorAll("#app, #panel, .splash, .announce, .flash, .sponsor, .hbreak, .victory")]
+    .map(n => n.textContent).join(" ");
+  const joue = (etape, a, data) => {
+    try {
+      act(a, data || {});
+      const m = texteVisible().match(/.{0,40}\b(undefined|NaN|null)\b|\[object \w+\]/);
+      if (m) pb.push(`${etape} : « ${m[0].trim()} » à l'écran`);
+    } catch (e) { pb.push(`${etape} : plantage — ${e.message}`); }
+  };
+
+  try {
+    // 1. un pack incomplet ne doit pas se lancer (il plantait la Manche 1)
+    appliquerPack(normaliserPack(JSON.parse(JSON.stringify(PACK_VIDE))));
+    S = freshState();
+    joue("pack vide", "go", { to: "m1rules" });
+    if (S.screen !== "pack") pb.push("pack vide : la partie démarre au lieu d'afficher ce qui manque");
+    appliquerPack(packReel);
+
+    const err = validerPack(PACK);
+    if (err.length) { pb.push("pack chargé incomplet, partie non jouée : " + err.join(" · ")); return pb; }
+
+    // 2. Manche 1 : le duo k marque sur la question i si k <= i (modulo)
+    S = freshState();
+    joue("règles Manche 1", "go", { to: "m1rules" });
+    joue("Manche 1", "go", { to: "m1" });
+    const attendu = {};
+    DUOS.forEach(d => attendu[d.id] = 0);
+    M1.forEach((q, i) => {
+      // comparé à opts.length, pas à aDesOptions() : le test ne doit pas partager le code qu'il vérifie
+      const masque = !!document.querySelector("#stage .hidden-note");
+      if (masque !== q.opts.length > 0) pb.push(`Manche 1, question ${i + 1} : « options masquées » ${masque ? "affiché sans QCM" : "absent sur un QCM"}`);
+      DUOS.forEach((d, k) => {
+        if (k <= i % DUOS.length) { joue(`Manche 1, question ${i + 1}`, "m1mark", { id: d.id }); attendu[d.id] += q.pts; }
+      });
+      joue(`Manche 1, question ${i + 1}`, "m1next");
+    });
+    const s1 = scoresM1();
+    DUOS.forEach(d => { if (s1[d.id] !== attendu[d.id]) pb.push(`scores Manche 1 : ${duoName(d)} a ${s1[d.id]} au lieu de ${attendu[d.id]}`); });
+    if (S.screen !== "m1res") pb.push("Manche 1 : n'arrive pas à l'élimination");
+
+    // 3. Manche 2 : les 2 derniers sortent, chaque duo marque à chaque tour
+    rank(s1, DUOS).slice(-2).forEach(d => joue("élimination", "elim", { id: d.id }));
+    joue("lancer la Manche 2", "startm2");
+    joue("Manche 2", "go", { to: "m2" });
+    let garde = 0;
+    while (S.screen === "m2" && garde++ < 500) {
+      const d = m2duo();
+      if (S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step]) {
+        const c = PACK.categories.find(c => c.questions.length > (S.m2used[c.id] || []).length);
+        if (!c) { pb.push("Manche 2 : plus aucune question à tirer"); break; }
+        joue("Manche 2, choix du thème", "pickcat", { cat: c.id });
+      }
+      joue("Manche 2, point", "m2mark", { key: d.id + (S.m2step ? "-r" + S.m2step : "-j") });
+      joue("Manche 2, suivant", "m2next");
+    }
+    if (S.screen !== "m2res") pb.push("Manche 2 : n'arrive pas au classement");
+    Object.entries(scoresM2()).forEach(([id, v]) => {
+      if (v !== M2_POINTS) pb.push(`scores Manche 2 : ${duoName(byId(id))} a ${v} au lieu de ${M2_POINTS}`);
+    });
+
+    // 4. finale : le premier finaliste perd tous ses cœurs
+    rank(scoresM2(), alive()).slice(0, 2).forEach(d => joue("finalistes", "final", { id: d.id }));
+    joue("lancer la finale", "startm3");
+    joue("finale", "go", { to: "m3" });
+    const perdant = S.finalists[0];
+    garde = 0;
+    while (perdant && !m3Out(perdant) && garde++ < 100) {
+      joue("finale, cœur perdu", "m3mark", { id: perdant });
+      if (!m3Out(perdant)) joue("finale, suivante", "m3next");
+    }
+    joue("vainqueur", "finish");
+    if (S.screen !== "end") pb.push("finale : pas d'écran de clôture");
+    else if (endResult().win !== duoName(byId(S.finalists[1]))) pb.push("clôture : mauvais vainqueur");
+    joue("panneau des scores", "panel");
+  } finally {
+    appliquerPack(packReel);
+    S = sauve;
+    AUTOTEST = false;
+    nettoyerEffets();
+    render();
+  }
+  return pb;
+}
+
+function afficherAutotest() {
+  const pb = autotest();
+  window.resultatAutotest = pb;   // lisible par un outil qui pilote le navigateur
+  console[pb.length ? "error" : "log"]("Auto-test :", pb.length ? pb : "OK");
+  document.querySelectorAll(".autotest").forEach(n => n.remove());
+  const n = el(`<div class="autotest" style="position:fixed;left:16px;bottom:16px;z-index:9999;max-width:720px;
+      max-height:60vh;overflow:auto;padding:14px 18px;background:#fff;border:3px solid #000;border-radius:10px;
+      font:14px/1.5 system-ui,sans-serif;box-shadow:6px 6px 0 #000">
+      <strong>${pb.length ? "✗ Auto-test : " + pb.length + " problème" + (pb.length > 1 ? "s" : "") : "✓ Auto-test : partie complète jouée sans erreur"}</strong>
+      ${pb.map(p => `<div>• ${esc(p)}</div>`).join("")}
+      <div style="margin-top:8px;color:#666">Clique pour fermer.</div>
+    </div>`);
+  n.addEventListener("click", () => n.remove());
+  document.body.appendChild(n);
+}
+
 /* ============================ BOOT ============================ */
 
 // Trappe de secours : ouvrir la page avec #reset à la fin de l'URL efface la
@@ -4343,14 +4559,12 @@ try {
 // Ajouter #reset à une page DÉJÀ ouverte ne la recharge pas : on écoute donc
 // aussi le changement d'ancre pour que la trappe marche dans les deux cas.
 window.addEventListener("hashchange", () => {
+  if (/autotest/i.test(location.hash)) { afficherAutotest(); return; }
   if (!/reset/i.test(location.hash)) return;
   try { localStorage.removeItem(KEY); } catch (e) {}
   S = freshState();
-  resetArmed = false;
-  announceKey = null; lastScreen = null; sponsorKey = null; flashKey = null;
-  hbreakPending = null; clearTimeout(hbreakTimer);
-        document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
-        victoryKey = null; clearTimeout(victoryTimer);
+  arme = null;
+  nettoyerEffets();
   render();
 });
 
@@ -4369,4 +4583,6 @@ try {
   S = freshState();
   render();
 }
+
+if (/autotest/i.test(location.hash)) afficherAutotest();
 </script>
