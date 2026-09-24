@@ -2297,6 +2297,14 @@ const PACK_VIDE = {
   manche3: []
 };
 
+/* Points de départ d'une partie. « nouvelle » reprend toutes les questions du
+   jeu original, sans les duos de juillet 2026 ni leurs Jokers, écrits pour eux. */
+const MODELES = {
+  nouvelle: () => Object.assign(JSON.parse(JSON.stringify(PACK_DEFAUT)), { duos: [] }),
+  demo:     () => JSON.parse(JSON.stringify(PACK_DEFAUT)),
+  vide:     () => JSON.parse(JSON.stringify(PACK_VIDE))
+};
+
 /* ===================== PACK ACTIF ET VUES DÉRIVÉES =====================
    Le pack est la SEULE source de vérité : chaque question y porte ses
    propres options de QCM, ce qui rend impossible le décalage silencieux
@@ -2355,6 +2363,11 @@ function chargerPack() {
 function sauverPack() {
   try { localStorage.setItem(PACK_KEY, JSON.stringify(PACK)); return true; }
   catch (e) { return false; }
+}
+
+// Une partie a-t-elle déjà été préparée dans ce navigateur ? (sinon : premier lancement)
+function packSauve() {
+  try { return !!localStorage.getItem(PACK_KEY); } catch (e) { return false; }
 }
 
 /* Remplit les champs manquants : un pack importé peut venir d'une autre
@@ -3278,6 +3291,7 @@ SCREENS.title = {
     <button class="btn ghost" data-act="openresume" style="margin-left:10px">Reprendre en Manche 2</button>
     <button class="btn ghost" data-act="openresume3" style="margin-left:10px">Reprendre en Manche 3</button>
     <button class="btn ghost" data-act="openedit" style="margin-left:10px">✏️ Éditeur</button>
+    <button class="btn ghost" data-act="go" data-to="choix" style="margin-left:10px">Nouvelle partie</button>
     <div class="spacer"></div>
     <button class="btn ghost" data-act="reset">${libelle("reset", "Repartir de zéro")}</button>`
 };
@@ -3339,32 +3353,45 @@ SCREENS.resume = {
     <button class="btn primary" data-act="startresume" ${S.m2order.length < 2 ? "disabled" : ""}>Lancer la Manche 2<kbd>→</kbd></button>`
 };
 
+// Carte de départ. Si une partie est déjà préparée, le premier clic prévient
+// qu'elle va être remplacée, le second la remplace.
+function carteDepart(which, num, titre, texte) {
+  return `<button class="step" data-act="usepack" data-which="${which}" style="cursor:pointer;text-align:left">
+      <div class="stepnum">${num}</div>
+      <h3>${titre}</h3>
+      <p>${arme === "usepack-" + which
+        ? "<b>Clique encore pour remplacer la partie actuelle.</b> Exporte-la avant si tu veux la garder."
+        : texte}</p>
+    </button>`;
+}
+
 SCREENS.choix = {
-  top: () => `<div class="eyebrow">Bienvenue</div><div class="spacer"></div>`,
-  stage: () => `
-    <div class="kicker"><span class="tag">Premier lancement</span><span>sur quoi veux-tu partir ?</span></div>
+  top: () => `<div class="eyebrow">${packSauve() ? "Nouvelle partie" : "Bienvenue"}</div><div class="spacer"></div>`,
+  stage: () => {
+    const nbCat = PACK_DEFAUT.categories.reduce((t, c) => t + c.questions.length, 0);
+    return `
+    <div class="kicker"><span class="tag">${packSauve() ? "Nouvelle partie" : "Premier lancement"}</span><span>sur quoi veux-tu partir ?</span></div>
     <h1 class="question">Choisis ton point de départ</h1>
     <div class="steps">
-      <button class="step" data-act="usepack" data-which="demo" style="cursor:pointer;text-align:left">
-        <div class="stepnum">1</div>
-        <h3>Le pack Z'amours</h3>
-        <p>${PACK_DEFAUT.duos.length} duos, ${PACK_DEFAUT.manche1.length} questions de Manche 1,
-           ${PACK_DEFAUT.categories.reduce((t, c) => t + c.questions.length, 0)} questions de catégories,
-           ${PACK_DEFAUT.manche3.length} consignes de finale. Tout est modifiable ensuite.</p>
-      </button>
-      <button class="step" data-act="usepack" data-which="vide" style="cursor:pointer;text-align:left">
-        <div class="stepnum">2</div>
-        <h3>Une partie vierge</h3>
-        <p>La structure du jeu, sans aucun contenu. Tu crées tes duos, tes jokers et tes questions depuis zéro.</p>
-      </button>
+      ${carteDepart("nouvelle", 1, "Les questions du jeu original",
+        `${PACK_DEFAUT.manche1.length} questions de Manche 1, ${nbCat} questions réparties en
+         ${PACK_DEFAUT.categories.length} catégories et ${PACK_DEFAUT.manche3.length} consignes de finale,
+         déjà prêtes. Il ne reste qu'à créer tes duos et leur Joker. Tout se modifie ensuite.`)}
+      ${carteDepart("vide", 2, "Une partie vierge",
+        "Aucune question. Tu écris tout toi-même : les duos, leurs Jokers et toutes les questions.")}
       <button class="step" data-act="importpack" style="cursor:pointer;text-align:left">
         <div class="stepnum">3</div>
-        <h3>Importer un pack</h3>
-        <p>Tu as reçu un fichier <code>.json</code> créé par quelqu'un d'autre ? Charge-le directement.</p>
+        <h3>Importer une partie</h3>
+        <p>Tu as un fichier <code>.json</code>, exporté par toi ou par quelqu'un d'autre ? Charge-le directement.</p>
       </button>
     </div>
-    <div class="subline" id="packmsg"></div>`,
-  bottom: () => ``
+    <div class="subline" id="packmsg"></div>`;
+  },
+  bottom: () => `
+    ${packSauve() ? `<button class="btn ghost" data-act="go" data-to="title">Retour</button>` : ""}
+    <div class="spacer"></div>
+    <button class="btn ${arme === "usepack-demo" ? "primary" : "ghost"}" data-act="usepack" data-which="demo"
+      title="La partie complète de juillet 2026, pour essayer le jeu">${libelle("usepack-demo", "Essayer avec la partie de juillet 2026")}</button>`
 };
 
 SCREENS.pack = {
@@ -3392,8 +3419,7 @@ SCREENS.pack = {
     <button class="btn primary" data-act="openedit">✏️ Modifier le contenu</button>
     <button class="btn ghost" data-act="exportpack" style="margin-left:10px">⬇ Exporter en JSON</button>
     <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>
-    <button class="btn ${arme === "usepack-demo" ? "primary" : "ghost"}" data-act="usepack" data-which="demo" style="margin-left:10px"
-      title="Remplace tout le contenu actuel">${libelle("usepack-demo", "Recharger le pack Z'amours")}</button>`
+    <button class="btn ghost" data-act="go" data-to="choix" style="margin-left:10px">Nouvelle partie</button>`
 };
 
 SCREENS.resume3 = {
@@ -3903,13 +3929,14 @@ function act(a, data) {
       break;
     }
     case "usepack": {
-      // au premier lancement il n'y a rien à perdre ; ailleurs, le contenu actuel serait écrasé
-      if (S.screen !== "choix" && !confirme("usepack-" + data.which)) break;
-      const pk = data.which === "vide" ? PACK_VIDE : PACK_DEFAUT;
-      appliquerPack(normaliserPack(JSON.parse(JSON.stringify(pk))));
+      // au premier lancement il n'y a rien à perdre ; ensuite, la partie préparée serait écrasée
+      if (packSauve() && !confirme("usepack-" + data.which)) break;
+      appliquerPack(normaliserPack(MODELES[data.which]()));
       sauverPack();
       S = freshState();
       nettoyerEffets();
+      // sans duos, la suite logique est de les créer
+      if (!DUOS.length) { S.screen = "edit"; ONGLET = "duos"; CAT_OUVERTE = null; }
       break;
     }
     case "openpack": S.screen = "pack"; break;
@@ -4475,8 +4502,13 @@ function autotest() {
     if (S.screen !== "pack") pb.push("pack vide : la partie démarre au lieu d'afficher ce qui manque");
     appliquerPack(packReel);
 
-    const err = validerPack(PACK);
-    if (err.length) { pb.push("pack chargé incomplet, partie non jouée : " + err.join(" · ")); return pb; }
+    // Une partie en cours de préparation (sans duos, par exemple) n'est pas un
+    // défaut du moteur : on joue alors la partie de juillet 2026, toujours complète.
+    autotest.partieJouee = "la partie chargée";
+    if (validerPack(PACK).length) {
+      appliquerPack(normaliserPack(MODELES.demo()));
+      autotest.partieJouee = "la partie de juillet 2026 (la partie chargée n'est pas encore jouable)";
+    }
 
     // 2. Manche 1 : le duo k marque sur la question i si k <= i (modulo)
     S = freshState();
@@ -4550,6 +4582,7 @@ function afficherAutotest() {
       max-height:60vh;overflow:auto;padding:14px 18px;background:#fff;border:3px solid #000;border-radius:10px;
       font:14px/1.5 system-ui,sans-serif;box-shadow:6px 6px 0 #000">
       <strong>${pb.length ? "✗ Auto-test : " + pb.length + " problème" + (pb.length > 1 ? "s" : "") : "✓ Auto-test : partie complète jouée sans erreur"}</strong>
+      <div style="color:#666">Jouée avec ${esc(autotest.partieJouee || "la partie chargée")}.</div>
       ${pb.map(p => `<div>• ${esc(p)}</div>`).join("")}
       <div style="margin-top:8px;color:#666">Clique pour fermer.</div>
     </div>`);
@@ -4589,7 +4622,7 @@ if (!chargerPack()) {
 
 try {
   load();
-  if (!localStorage.getItem(PACK_KEY) && S.screen === "title") S.screen = "choix";
+  if (!packSauve() && S.screen === "title") S.screen = "choix";
   render();
 } catch (e) {
   console.error("État illisible, retour à l'écran de titre :", e);

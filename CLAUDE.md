@@ -41,7 +41,8 @@ destinée doit rester lisible par quelqu'un qui ne code pas.
    - qu'aucun `undefined`, `NaN` ou `null` ne s'affiche à aucune étape.
 
    **À relancer après toute modification du moteur.** Le résultat est aussi exposé dans
-   `window.resultatAutotest` (tableau vide = OK).
+   `window.resultatAutotest` (tableau vide = OK). Si la partie chargée n'est pas encore jouable
+   (une partie en préparation, sans duos), le test joue la partie de juillet 2026 et le signale.
 2. **Depuis Claude**, les outils du navigateur n'agissent pas sur une page `file://`. Il faut servir
    le dossier :
    ```bash
@@ -67,7 +68,7 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 | Section | Contenu |
 |---|---|
 | `<style>` (≈1 700 premières lignes) | Habillage pop-art : tokens dans `:root`, puis un bloc par écran et par animation |
-| `CONTENU` | `PACK_DEFAUT` (le pack de juillet 2026) et `PACK_VIDE` |
+| `CONTENU` | `PACK_DEFAUT` (la partie complète de juillet 2026), `PACK_VIDE`, et `MODELES`, les trois points de départ d'une partie : `nouvelle` (les questions de juillet sans les duos ni leurs Jokers), `vide`, `demo` (juillet complet) |
 | `PACK ACTIF ET VUES DÉRIVÉES` | `appliquerPack()`, `normaliserPack()` (remplit ce qui manque, assainit les ids), `validerPack()` (liste des erreurs bloquantes) |
 | `ÉTAT` | `S`, l'état de partie ; `freshState()`, `hydrate()` (recolle un état sauvegardé au pack actuel), `scoresM1()` et `scoresM2()` |
 | `TIMER`, `HELPERS`, `RENDU` | Chrono, `esc()`, `rank()` ; `render()` redessine tout l'écran à chaque action |
@@ -80,8 +81,9 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 
 ### Écrans (`S.screen`)
 
-`choix` (premier lancement) → `title` → `m1rules` → `m1` → `m1res` → `m2rules` → `m2` → `m2res` →
-`m3rules` → `m3` → `end`. À côté : `edit` (éditeur), `pack` (récapitulatif et erreurs), `resume` et
+`choix` (premier lancement, puis bouton « Nouvelle partie ») → `title` → `m1rules` → `m1` → `m1res` →
+`m2rules` → `m2` → `m2res` → `m3rules` → `m3` → `end`. Une partie créée sans duos ouvre directement
+l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récapitulatif et erreurs), `resume` et
 `resume3` (reprendre directement en Manche 2 ou 3 quand la soirée est coupée en deux).
 
 ### Déroulé du jeu (tel que codé)
