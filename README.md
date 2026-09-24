@@ -8,9 +8,13 @@ Un seul écran, projeté, piloté au clavier par l'animateur.
 Double-cliquer sur `zamours.html` (Chrome ou Edge conseillés), puis `F11` pour le plein écran.
 Aucune connexion nécessaire.
 
-Tout se pilote au clavier : `→` avancer, `←` revenir, `Espace` chrono, `R` révéler l'option suivante
-d'un QCM (`Maj+R` en retire une), `S` scores. Pendant le jeu, les boutons se cachent pour que la
-salle ne voie que le jeu : bouger la souris ou appuyer sur `Échap` les fait réapparaître.
+Tout se pilote au clavier : `→` avancer (et dévoiler les classements place par place), `←` revenir,
+`Espace` chrono, `R` révéler l'option suivante d'un QCM (`Maj+R` en retire une), `1` à `9` choisir le
+thème en Manche 2, `S` scores, `M` couper ou remettre le son. Pendant le jeu, les boutons se cachent
+pour que la salle ne voie que le jeu : bouger la souris ou appuyer sur `Échap` les fait réapparaître.
+
+Le son démarre au premier appui sur une touche (les navigateurs l'exigent). **Pour transmettre le
+jeu, copier le dossier entier** : sans le dossier `lib/`, il marche encore, mais muet et moins animé.
 
 ## Vérifier après une modification
 

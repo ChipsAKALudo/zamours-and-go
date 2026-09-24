@@ -727,6 +727,23 @@
   .rank.picked.finale .pos::after { content: " ★"; }
   .rank.tie { border-left: 10px solid var(--yellow); }
 
+  /* place pas encore dévoilée : juste son rang */
+  .rank.cache { opacity: .45; border-style: dashed; box-shadow: none; cursor: default; }
+  .rank.cache:hover { transform: none; box-shadow: none; }
+  /* la place qui vient d'être dévoilée arrive en claquant */
+  @keyframes rankSlam {
+    0%   { opacity: 0; transform: translateX(-60px) scale(1.12) rotate(-2deg); }
+    60%  { opacity: 1; transform: translateX(6px) scale(1.02); }
+    100% { opacity: 1; transform: none; }
+  }
+  .rank.pop { animation: rankSlam .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+
+  /* finale : les cœurs de chaque duo, en grand — c'est le climax */
+  .coeurs-finale { display: flex; flex-wrap: wrap; gap: clamp(16px, 3vw, 64px); }
+  .cf-nom { font-family: var(--display); font-size: clamp(15px, min(1.5vw, 2.6vh), 32px); letter-spacing: .04em; }
+  .cf-coeurs .hprow { margin-left: 0; letter-spacing: .08em; }
+  .cf-coeurs .hp { font-size: clamp(26px, min(4vw, 7vh), 90px); line-height: 1; }
+
   /* ---------- titres criards ---------- */
 
   .winner {
@@ -1732,6 +1749,72 @@
   /* après un splash, la scène apparaît plus tard qu'après une simple annonce */
   .stage.enter-late { animation: stageIn .7s 1.55s cubic-bezier(.2,.7,.3,1) both; }
 
+  /* ---------- transitions entre écrans (View Transitions, cf. render()) ----------
+     Barres du haut et du bas : restent en place, leur texte change en fondu.
+     Changement d'écran : l'ancien et le nouveau sont découpés par le MÊME bord
+     diagonal, en miroir — le nouveau à droite du bord, l'ancien à gauche. La
+     scène n'a pas de fond : sans ce découpage, l'ancien écran transparaissait
+     à travers les vides du nouveau. Même durée, même courbe, sinon ils se
+     décalent. Même écran, question suivante : fondu croisé du navigateur. */
+  #rail-top    { view-transition-name: vt-haut; }
+  #rail-bottom { view-transition-name: vt-bas; }
+  #stage       { view-transition-name: vt-scene; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  ::view-transition-group(vt-haut), ::view-transition-group(vt-bas) { animation-duration: .6s; }
+  html[data-vt="ecran"]::view-transition-old(vt-scene) { animation: vtVoletAncien .8s cubic-bezier(.65, 0, .25, 1) both; }
+  html[data-vt="ecran"]::view-transition-new(vt-scene) { animation: vtVoletNouveau .8s cubic-bezier(.65, 0, .25, 1) both; }
+  @keyframes vtVoletNouveau {
+    from { clip-path: polygon(115% 0, 140% 0, 140% 100%, 100% 100%); }
+    to   { clip-path: polygon(-30% 0, 140% 0, 140% 100%, -45% 100%); }
+  }
+  @keyframes vtVoletAncien {
+    from { clip-path: polygon(-50% 0, 115% 0, 100% 100%, -50% 100%); filter: brightness(1); }
+    to   { clip-path: polygon(-50% 0, -30% 0, -45% 100%, -50% 100%); filter: brightness(.75); }
+  }
+  html[data-vt="question"]::view-transition-group(vt-scene) { animation-duration: .45s; }
+
+  /* ---------- « Feutres en l'air ! » (fin du chrono, GSAP) ---------- */
+  .feutres {
+    position: fixed; inset: 0; z-index: 70;
+    display: grid; place-items: center;
+    background: rgba(229, 35, 31, .22);
+    pointer-events: none;
+  }
+  .fe-mot {
+    font-family: var(--display);
+    font-size: clamp(48px, min(9vw, 15vh), 190px);
+    text-transform: uppercase;
+    color: var(--yellow);
+    -webkit-text-stroke: 5px var(--ink);
+    paint-order: stroke fill;
+    text-shadow: 8px 8px 0 var(--ink);
+    transform: rotate(-4deg);
+  }
+
+  /* ---------- tirage d'une question (Manche 2, GSAP) ---------- */
+  .tirage {
+    position: fixed; inset: 0; z-index: 65;
+    display: grid; place-items: center;
+    background: rgba(248, 252, 255, .88);
+    pointer-events: none;
+    perspective: 1200px;
+  }
+  .ti-cartes { position: relative; width: clamp(160px, 22vh, 260px); height: clamp(220px, 30vh, 360px); }
+  .ti-carte {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    padding: 14px;
+    background: var(--rose);
+    border: 5px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: var(--cutout);
+    font-family: var(--display);
+    font-size: clamp(18px, 3.4vh, 38px);
+    text-align: center;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--ink);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before { transition: none !important; animation: none !important; }
   }
@@ -1746,6 +1829,11 @@
 </div>
 
 <div class="panel" id="panel"></div>
+
+<!-- Animations (GSAP) et sons (Tone.js), rangés à côté du jeu : cf. lib/README.md.
+     Absents, le jeu tourne quand même, muet et sans ces animations. -->
+<script src="lib/gsap.min.js"></script>
+<script src="lib/Tone.js"></script>
 
 <script>
 "use strict";
@@ -2610,6 +2698,7 @@ function freshState() {
     eliminated: [],
     m2order: [], m2i: 0, m2step: 0, m2cat: {}, m2drawn: {}, m2used: {}, m2marks: {},
     finalists: [], m3i: 0, m3marks: {},
+    devoile: 0,             // places du classement déjà dévoilées, depuis la dernière
     sudden: false, suddenWinner: null,
     resumed: false,
     revealCount: 0,
@@ -2673,11 +2762,19 @@ function startTimer() {
   S.tRunning = true;
   S.tStart = Date.now();
   const base = S.tLeft;
+  let seconde = Math.ceil(base);
   clearInterval(tick);
   tick = setInterval(() => {
     const left = base - (Date.now() - S.tStart) / 1000;
     S.tLeft = Math.max(0, left);
-    if (S.tLeft <= 0) { S.tRunning = false; clearInterval(tick); tick = null; }
+    // un tic à chacune des 5 dernières secondes
+    const s = Math.ceil(S.tLeft);
+    if (s !== seconde) { seconde = s; if (s > 0 && s <= 5) Son.tic(); }
+    if (S.tLeft <= 0) {
+      S.tRunning = false; clearInterval(tick); tick = null;
+      Son.fin();
+      feutresEnLair();
+    }
     paintTimer();
   }, 90);
   render();
@@ -2763,6 +2860,149 @@ function boutonsChrono() {
     <button class="btn ghost" data-act="treset">Remettre à ${CHRONO}</button>`;
 }
 
+/* ============================ SON ============================
+   Effets de plateau fabriqués par Tone.js (lib/Tone.js) : aucun fichier son.
+   Sans la librairie, le jeu reste muet, sans erreur. Le navigateur n'autorise
+   le son qu'après un geste : il démarre au premier appui ou clic de
+   l'animateur. Touche M : couper ou remettre le son (retenu par le navigateur).
+   ============================================================== */
+
+const SON_KEY = "zamours-son-v1";
+
+const Son = (() => {
+  const T = window.Tone;
+  let actif = true, instr = null;
+  try { actif = localStorage.getItem(SON_KEY) !== "coupe"; } catch (e) {}
+
+  function debloquer() {
+    if (!T || instr) return;
+    T.start().then(() => {
+      if (instr) return;
+      const sortie = new T.Volume(-8).toDestination();
+      instr = {
+        cloche: new T.PolySynth(T.Synth, { oscillator: { type: "triangle" }, envelope: { attack: .003, decay: .35, sustain: 0, release: .4 } }).connect(sortie),
+        bois:   new T.MembraneSynth({ pitchDecay: .008, octaves: 2, envelope: { attack: .001, decay: .07, sustain: 0 } }).connect(sortie),
+        grosse: new T.MembraneSynth({ pitchDecay: .06, octaves: 6, envelope: { attack: .001, decay: .6, sustain: 0 } }).connect(sortie),
+        bruit:  new T.NoiseSynth({ envelope: { attack: .001, decay: .25, sustain: 0 } }).connect(new T.Volume(-10).connect(sortie)),
+        buzzer: new T.Synth({ oscillator: { type: "square" }, envelope: { attack: .01, decay: 0, sustain: 1, release: .1 } }).connect(new T.Volume(-14).connect(sortie))
+      };
+    }).catch(() => {});
+  }
+  document.addEventListener("keydown", debloquer);
+  document.addEventListener("pointerdown", debloquer);
+
+  // f reçoit les instruments et l'instant présent. Muet si coupé, pas encore
+  // débloqué ou pendant l'auto-test ; une erreur de Tone ne casse jamais le jeu.
+  const joue = f => { if (actif && instr && !AUTOTEST) try { f(instr, T.now()); } catch (e) {} };
+
+  return {
+    basculer() {
+      actif = !actif;
+      try { localStorage.setItem(SON_KEY, actif ? "actif" : "coupe"); } catch (e) {}
+      return actif;
+    },
+    // un duo a trouvé
+    match:   () => joue((i, t) => { i.cloche.triggerAttackRelease("E6", "16n", t); i.cloche.triggerAttackRelease("A6", "8n", t + .08); }),
+    // un cœur de perdu en finale
+    coeur:   () => joue((i, t) => i.grosse.triggerAttackRelease("C2", "8n", t)),
+    // « Crac ! » : le cœur se brise
+    crac:    () => joue((i, t) => { i.bruit.triggerAttackRelease(.3, t); i.grosse.triggerAttackRelease("G1", "4n", t + .02); }),
+    // ouverture de manche
+    manche:  () => joue((i, t) => { i.grosse.triggerAttackRelease("C2", "8n", t); i.cloche.triggerAttackRelease(["C5", "E5", "G5"], "4n", t + .18); }),
+    // « Maintenant, c'est à… »
+    annonce: () => joue((i, t) => { i.cloche.triggerAttackRelease("G5", "16n", t); i.cloche.triggerAttackRelease("C6", "8n", t + .12); }),
+    // Éclair / Spotlight
+    eclair:  () => joue((i, t) => { i.bruit.triggerAttackRelease(.08, t); i.cloche.triggerAttackRelease("C6", "16n", t + .02); }),
+    // une option de QCM, une place du classement
+    option:  () => joue((i, t) => i.bois.triggerAttackRelease("G4", "32n", t)),
+    // les 5 dernières secondes du chrono
+    tic:     () => joue((i, t) => i.bois.triggerAttackRelease("C5", "32n", t)),
+    // fin du chrono
+    fin:     () => joue((i, t) => i.buzzer.triggerAttackRelease("A2", .6, t)),
+    // tirage d'une question : roulement qui accélère, puis tintement
+    tirage:  duree => joue((i, t) => {
+      let dt = .11, x = 0;
+      while (x < duree - .15) { i.bois.triggerAttackRelease(x % .3 < .15 ? "C4" : "D4", "32n", t + x); x += dt; dt = Math.max(.045, dt * .9); }
+      i.cloche.triggerAttackRelease(["C6", "E6"], "8n", t + duree);
+    }),
+    // victoire : arpège, puis accord
+    victoire: () => joue((i, t) => {
+      ["C5", "E5", "G5", "C6"].forEach((n, k) => i.cloche.triggerAttackRelease(n, "16n", t + k * .11));
+      i.cloche.triggerAttackRelease(["C5", "E5", "G5", "C6"], "2n", t + .5);
+      i.grosse.triggerAttackRelease("C2", "4n", t + .5);
+    })
+  };
+})();
+
+/* ================= ANIMATIONS ENCHAÎNÉES (GSAP) =================
+   Séquences en plusieurs temps, pilotées par une timeline GSAP
+   (lib/gsap.min.js). Sans la librairie, ou avec « animations réduites »,
+   l'étape s'affiche simplement, sans mouvement. Règle : GSAP n'anime que
+   ses propres calques, jamais un élément déjà animé en CSS. */
+
+const G = window.gsap || null;
+const mouvementReduit = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const avecGsap = () => !!G && !mouvementReduit() && !AUTOTEST;
+
+// Fin du chrono : « Feutres en l'air ! » plein écran, une seconde.
+function feutresEnLair() {
+  if (AUTOTEST) return;
+  document.querySelectorAll(".feutres").forEach(n => n.remove());
+  const n = el(`<div class="feutres" aria-hidden="true"><div class="fe-mot">Feutres en l'air !</div></div>`);
+  document.body.appendChild(n);
+  // filet : GSAP s'arrête quand l'onglet est masqué, le calque ne doit pas rester
+  setTimeout(() => n.remove(), 2200);
+  if (!avecGsap()) return;
+  G.timeline({ onComplete: () => n.remove() })
+    .fromTo(n, { opacity: 0 }, { opacity: 1, duration: .12 })
+    .fromTo(n.firstChild, { scale: .25, rotation: -14 }, { scale: 1, rotation: -4, duration: .5, ease: "back.out(2.4)" }, 0)
+    .to(n.firstChild, { scale: 1.07, duration: .13, yoyo: true, repeat: 3, ease: "sine.inOut" })
+    .to(n, { opacity: 0, duration: .35, delay: .15 });
+}
+
+// Tirage d'une question dans un thème : cinq cartes battues, une se retourne.
+// Joue par-dessus la scène, que render() fait entrer en retard (enter-late).
+const TIRAGE_MS = 1500;
+let tirageEnAttente = null;   // libellé du thème, posé par l'action pickcat
+
+function maybeTirage() {
+  if (!tirageEnAttente) return 0;
+  const label = tirageEnAttente;
+  tirageEnAttente = null;
+  if (AUTOTEST) return 0;
+  playTirage(label);
+  return TIRAGE_MS - 300;
+}
+
+function playTirage(label) {
+  document.querySelectorAll(".tirage").forEach(n => n.remove());
+  const n = el(`<div class="tirage" aria-hidden="true">
+      <div class="ti-cartes">${[0, 1, 2, 3, 4].map(() => `<div class="ti-carte"><span>${esc(label)}</span></div>`).join("")}</div>
+    </div>`);
+  document.body.appendChild(n);
+  Son.tirage(TIRAGE_MS / 1000 - .35);
+
+  const stage = document.getElementById("stage");
+  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break");
+  void stage.offsetWidth;
+  stage.classList.add("enter-late");
+
+  const cartes = [...n.querySelectorAll(".ti-carte")];
+  // filet : GSAP s'arrête quand l'onglet est masqué, le calque ne doit pas rester
+  setTimeout(() => n.remove(), TIRAGE_MS + 600);
+  if (!avecGsap()) return;
+  const choisie = cartes[2];
+  G.timeline({ onComplete: () => n.remove() })
+    .fromTo(cartes, { y: "60vh", rotation: () => G.utils.random(-25, 25) },
+                    { y: 0, rotation: (k) => (k - 2) * 7, duration: .35, stagger: .05, ease: "back.out(1.6)" })
+    // on bat les cartes : elles s'échangent de place, deux fois
+    .to(cartes, { x: () => G.utils.random(-140, 140), rotation: () => G.utils.random(-18, 18), duration: .16, repeat: 3, yoyo: true, ease: "power1.inOut" })
+    // la carte tirée sort du paquet et se retourne ; les autres s'effacent
+    .to(cartes.filter(c => c !== choisie), { opacity: 0, y: 40, duration: .2 }, ">")
+    .to(choisie, { scale: 1.35, rotation: 0, x: 0, rotationY: 360, duration: .4, ease: "back.out(1.8)" }, "<")
+    .to(n, { opacity: 0, duration: .2 }, "+=.05");
+}
+
 /* ============================ RENDU ============================ */
 
 /* Pendant le jeu, les commandes de l'animateur se cachent : la salle ne voit
@@ -2779,7 +3019,35 @@ function montrerBarres() {
 }
 document.addEventListener("mousemove", montrerBarres);
 
+/* --- Transitions entre écrans (View Transitions, natif) ---
+   Le navigateur photographie l'écran avant et après le rendu, puis anime le
+   passage (CSS : ::view-transition-*). Seulement quand l'écran ou la question
+   change, et jamais par-dessus une entrée maison (choregraphie()) : une seule
+   transition à la fois. Sans support, ou « animations réduites » : changement
+   immédiat. ⚠ Pendant une transition, le rendu est asynchrone : ne pas lire
+   l'écran juste après render() (l'auto-test coupe les transitions pour ça). */
+let cleVue = null, ecranVue = null;
+
+function choregraphie() {
+  if (S.screen !== lastScreen && roundMeta()) return true;                     // ouverture de manche
+  if (S.screen === "m1" && "m1-" + S.m1i !== flashKey) return true;           // Éclair / Spotlight
+  if (S.screen === "m2" && S.m2i + "-" + S.m2step !== announceKey) return true; // « c'est à… »
+  return !!hbreakPending || !!tirageEnAttente || S.screen === "end";
+}
+
 function render() {
+  const cle = S.screen + "|" + (cleQuestion() || "");
+  const change = cleVue !== null && cle !== cleVue;
+  const genre = S.screen === ecranVue ? "question" : "ecran";
+  cleVue = cle; ecranVue = S.screen;
+  if (!change || choregraphie() || !document.startViewTransition || AUTOTEST || mouvementReduit()) return dessiner();
+  document.documentElement.dataset.vt = genre;
+  // Une transition sautée (clics rapides, onglet caché) rejette « ready » ;
+  // l'écran est quand même dessiné, ce n'est pas une erreur.
+  document.startViewTransition(dessiner).ready.catch(() => {});
+}
+
+function dessiner() {
   const top = document.getElementById("rail-top");
   const stage = document.getElementById("stage");
   const bot = document.getElementById("rail-bottom");
@@ -2798,8 +3066,9 @@ function render() {
   const wait3 = maybeFlash(wait);
   const wait4 = maybeHeartBreak();
   maybeVictory(wait4);
+  const wait5 = maybeTirage();   // avant la révélation : elle doit attendre la fin du tirage
   appliquerRevelation();
-  maybeSponsor(Math.max(wait, wait2, wait3, wait4));
+  maybeSponsor(Math.max(wait, wait2, wait3, wait4, wait5));
 }
 
 
@@ -2918,6 +3187,7 @@ function maybeVictory(delay) {
 }
 
 function playVictory(r) {
+  Son.victoire();
   document.querySelectorAll(".victory").forEach(n => n.remove());
   clearTimeout(victoryTimer);
 
@@ -3026,6 +3296,7 @@ function maybeHeartBreak() {
 }
 
 function playHeartBreak(perdants) {
+  Son.crac();
   document.querySelectorAll(".hbreak").forEach(n => n.remove());
   clearTimeout(hbreakTimer);
 
@@ -3096,6 +3367,7 @@ function maybeFlash(delay) {
 function playFlash() {
   const q = M1[S.m1i];
   if (!q) return;
+  Son.eclair();
   const isE = q.type === "eclair";
 
   document.querySelectorAll(".flash").forEach(n => n.remove());
@@ -3198,6 +3470,7 @@ function maybeSplash() {
 const HEART = "M50 88C20 66 2 47 2 30 2 14 14 4 27 4c10 0 18 6 23 14 5-8 13-14 23-14 13 0 25 10 25 26 0 17-18 36-48 58Z";
 
 function playSplash(m) {
+  Son.manche();
   document.querySelectorAll(".splash").forEach(n => n.remove());
   clearTimeout(splashTimer);
 
@@ -3352,6 +3625,7 @@ function startHeartField(cv) {
 function playAnnounce() {
   const d = m2duo();
   if (!d) return;
+  Son.annonce();
   const step = S.m2step === 0 ? "🃏 Joker — 3 points" : "🗂️ " + m2StepLabel(S.m2step) + " — 2 points";
 
   document.querySelectorAll(".announce").forEach(n => n.remove());
@@ -3670,24 +3944,49 @@ SCREENS.m3rules = rulesScreen("m3rules");
 SCREENS.m1res = {
   top: () => railBase("Manche 1 · Classement et élimination"),
   stage: () => {
-    const sc = scoresM1();
-    const r = rank(sc, DUOS);
-    const cut = exAequo(sc, r, r.length - 2);   // 2 duos sortent
+    const { sc, r, qualifies } = classementEnCours();
+    const tout = !resteADevoiler();
+    const cut = tout ? exAequo(sc, r, qualifies) : null;   // pas d'égalité annoncée avant la fin
     return `
       <div class="kicker"><span class="tag">Élimination</span><span>les 2 derniers rejoignent le Jury du Fail</span></div>
       ${cut !== null ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
-      <div class="ranks">
-        ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${sc[d.id] === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
-          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id]}</span></button>`).join("")}
-      </div>
-      <div class="subline">Les 2 duos désignés deviennent le <em>Jury du Fail</em>, armés des <em>buzzers poulets</em>. Ils arbitrent l'ex æquo de fin de Manche 2 et décernent le Prix du Fail à la toute fin.</div>`;
+      <div class="ranks">${lignesClassement(sc, r, cut, S.eliminated, "picked", "elim")}</div>
+      ${tout ? `<div class="subline">Les 2 duos désignés deviennent le <em>Jury du Fail</em>, armés des <em>buzzers poulets</em>. Ils arbitrent l'ex æquo de fin de Manche 2 et décernent le Prix du Fail à la toute fin.</div>` : ""}`;
   },
   bottom: () => `
     <button class="btn ghost" data-act="go" data-to="m1">Revenir aux questions</button>
     <div class="spacer"></div>
-    <span class="eyebrow" style="margin-right:14px">${S.eliminated.length}/2 désignés</span>
-    <button class="btn primary" data-act="startm2" ${S.eliminated.length !== 2 ? "disabled" : ""}>Manche 2 — remise à zéro<kbd>→</kbd></button>`
+    ${resteADevoiler()
+      ? `<button class="btn primary" data-act="devoile">Révéler la place suivante<kbd>→</kbd></button>`
+      : `<span class="eyebrow" style="margin-right:14px">${S.eliminated.length}/2 désignés</span>
+         <button class="btn primary" data-act="startm2" ${S.eliminated.length !== 2 ? "disabled" : ""}>Manche 2 — remise à zéro<kbd>→</kbd></button>`}`
 };
+
+/* --- Classement révélé place par place, de la dernière à la première ---
+   → dévoile une place (action « devoile ») ; une fois tout dévoilé, sans
+   égalité sur la barre, les sortants (ou les finalistes) sont présélectionnés
+   — l'animateur n'a plus qu'à confirmer. Les places cachées ne se cliquent pas. */
+let devoileJuste = false;   // la dernière place dévoilée s'anime au rendu qui suit
+
+function classementEnCours() {
+  if (S.screen === "m1res") { const sc = scoresM1(); return { sc, r: rank(sc, DUOS), qualifies: DUOS.length - 2 }; }
+  const sc = scoresM2();
+  return { sc, r: rank(sc, alive()), qualifies: 2 };
+}
+
+function resteADevoiler() {
+  if (S.screen !== "m1res" && S.screen !== "m2res") return false;
+  return (S.devoile || 0) < classementEnCours().r.length;
+}
+
+function lignesClassement(sc, r, cut, choisis, classeChoisi, action) {
+  const vus = S.devoile || 0, pop = devoileJuste;
+  devoileJuste = false;
+  return r.map((d, i) => i < r.length - vus
+    ? `<div class="rank cache"><span class="pos">${i + 1}</span><span>?</span><span class="pts"></span></div>`
+    : `<button class="rank ${choisis.includes(d.id) ? classeChoisi : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""} ${pop && i === r.length - vus ? "pop" : ""}" data-act="${action}" data-id="${d.id}">
+        <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id] || 0}</span></button>`).join("");
+}
 
 /* ---------- manche 2 ---------- */
 
@@ -3780,9 +4079,9 @@ SCREENS.m2 = {
         <h1 class="question">Quel thème ?</h1>
         <div class="subline">Une question est tirée au hasard dans le thème choisi, puis retirée de la pile.</div>
         <div class="cats">
-          ${PACK.categories.map(c => {
+          ${PACK.categories.map((c, k) => {
             const left = c.questions.length - ((S.m2used && S.m2used[c.id]) || []).length;
-            return `<button class="btn" data-act="pickcat" data-cat="${c.id}" ${left <= 0 ? "disabled" : ""}>${esc(c.label)} <span style="color:var(--muted)">(${left})</span></button>`;
+            return `<button class="btn" data-act="pickcat" data-cat="${c.id}" ${left <= 0 ? "disabled" : ""}>${k < 9 ? `<kbd>${k + 1}</kbd> ` : ""}${esc(c.label)} <span style="color:var(--muted)">(${left})</span></button>`;
           }).join("")}
         </div>`;
     }
@@ -3863,23 +4162,21 @@ function awardRow(markKey, pts) {
 SCREENS.m2res = {
   top: () => railBase("Manche 2 · Classement et finalistes"),
   stage: () => {
-    const sc = scoresM2();
-    const r = rank(sc, alive());
-    const cut = exAequo(sc, r, 2);   // 2 duos vont en finale
+    const { sc, r, qualifies } = classementEnCours();
+    const cut = resteADevoiler() ? null : exAequo(sc, r, qualifies);
     return `
       <div class="kicker"><span class="tag">Finalistes</span><span>les 2 premiers vont en finale</span></div>
       ${cut !== null ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
-      <div class="ranks">
-        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked finale" : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
-          <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id] || 0}</span></button>`).join("")}
-      </div>`;
+      <div class="ranks">${lignesClassement(sc, r, cut, S.finalists, "picked finale", "final")}</div>`;
   },
   bottom: () => `
     <button class="btn ${arme === "stophere" ? "primary" : "ghost"}" data-act="stophere"
       title="Termine la partie sans finale : le 1er de la Manche 2 gagne">${libelle("stophere", "Clore la partie ici")}</button>
     <div class="spacer"></div>
-    <span class="eyebrow" style="margin-right:14px">${S.finalists.length}/2 qualifiés</span>
-    <button class="btn primary" data-act="startm3" ${S.finalists.length !== 2 ? "disabled" : ""}>Lancer la finale<kbd>→</kbd></button>`
+    ${resteADevoiler()
+      ? `<button class="btn primary" data-act="devoile">Révéler la place suivante<kbd>→</kbd></button>`
+      : `<span class="eyebrow" style="margin-right:14px">${S.finalists.length}/2 qualifiés</span>
+         <button class="btn primary" data-act="startm3" ${S.finalists.length !== 2 ? "disabled" : ""}>Lancer la finale<kbd>→</kbd></button>`}`
 };
 
 /* ---------- manche 3 ---------- */
@@ -3905,7 +4202,9 @@ SCREENS.m3 = {
               const ko = S.finalists.filter(m3Out);
               return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>${ko.length > 1 ? "mort subite pour les départager" : "la manche est terminée"}</b></div>`;
             })()
-          : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}`,
+          : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}
+        ${S.sudden ? "" : `<div class="coeurs-finale">${S.finalists.map(id => `
+          <div><div class="cf-nom">${esc(duoName(byId(id)))}</div><div class="cf-coeurs">${heartRow(id)}</div></div>`).join("")}</div>`}`,
         timerBlock("Les deux écrivent, sans se parler"))}
       <div>
         <div class="eyebrow" style="margin-bottom:11px">${S.sudden ? "Premier duo à trouver :" : "Réponses différentes :"}</div>
@@ -4036,8 +4335,9 @@ function nettoyerEffets() {
   hbreakPending = null; clearTimeout(hbreakTimer);
   annulerGag(); derniereQuestion = null;
   Object.keys(gagFait).forEach(k => delete gagFait[k]);
-  document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory").forEach(n => n.remove());
+  document.querySelectorAll(".announce, .splash, .sponsor, .flash, .hbreak, .victory, .tirage, .feutres").forEach(n => n.remove());
   victoryKey = null; clearTimeout(victoryTimer);
+  tirageEnAttente = null;
 }
 
 // Un pack incomplet ne se joue pas : on montre ce qui manque au lieu de planter.
@@ -4063,12 +4363,12 @@ function act(a, data) {
 
     case "m1mark": {
       const m = S.m1marks[S.m1i] || (S.m1marks[S.m1i] = {});
-      if (m[data.id]) delete m[data.id]; else m[data.id] = 1;
+      if (m[data.id]) delete m[data.id]; else { m[data.id] = 1; Son.match(); }
       break;
     }
     case "m1next":
       resetTimer(); S.revealCount = 0;
-      if (S.m1i === M1.length - 1) S.screen = "m1res";
+      if (S.m1i === M1.length - 1) { S.screen = "m1res"; S.devoile = 0; }
       else S.m1i++;
       break;
     case "m1prev": resetTimer(); S.revealCount = 0; if (S.m1i > 0) S.m1i--; break;
@@ -4164,16 +4464,17 @@ function act(a, data) {
       S.m2cat[roundKey] = data.cat;
       S.m2drawn[roundKey] = qi;
       S.revealCount = 0;
+      tirageEnAttente = cat.label;
       break;
     }
     case "m2mark":
-      if (S.m2marks[data.key]) delete S.m2marks[data.key]; else S.m2marks[data.key] = 1;
+      if (S.m2marks[data.key]) delete S.m2marks[data.key]; else { S.m2marks[data.key] = 1; Son.match(); }
       break;
     case "m2next":
       resetTimer(); S.revealCount = 0;
       if (S.m2i < S.m2order.length - 1) S.m2i++;
       else if (S.m2step < M2_TOURS - 1) { S.m2step++; S.m2i = 0; }
-      else S.screen = "m2res";
+      else { S.screen = "m2res"; S.devoile = 0; }
       break;
     case "m2prev":
       resetTimer(); S.revealCount = 0;
@@ -4197,7 +4498,7 @@ function act(a, data) {
       break;
     case "m3mark": {
       const k = S.m3i + "|" + data.id;
-      if (S.m3marks[k]) delete S.m3marks[k]; else S.m3marks[k] = 1;
+      if (S.m3marks[k]) delete S.m3marks[k]; else { S.m3marks[k] = 1; Son.coeur(); }
       break;
     }
     case "m3next":
@@ -4217,6 +4518,22 @@ function act(a, data) {
     case "finish": queueHeartBreak(); S.screen = "end"; break;
 
     case "cible": S.cible[data.id] = S.cible[data.id] === "a" ? "b" : "a"; break;
+
+    case "devoile": {
+      const { sc, r, qualifies } = classementEnCours();
+      if ((S.devoile || 0) >= r.length) break;
+      S.devoile = (S.devoile || 0) + 1;
+      devoileJuste = true;
+      const place = r.length - S.devoile;   // 0 = le premier
+      const fort = S.screen === "m1res" ? place >= qualifies : place < qualifies;
+      if (!fort) Son.option(); else if (S.screen === "m1res") Son.coeur(); else Son.match();
+      // tout est dévoilé, pas d'égalité sur la barre : on présélectionne
+      if (S.devoile === r.length && exAequo(sc, r, qualifies) === null) {
+        if (S.screen === "m1res" && !S.eliminated.length) S.eliminated = r.slice(qualifies).map(d => d.id);
+        if (S.screen === "m2res" && !S.finalists.length) S.finalists = r.slice(0, qualifies).map(d => d.id);
+      }
+      break;
+    }
   }
   render();
 }
@@ -4230,13 +4547,22 @@ document.addEventListener("keydown", e => {
   if (["edit", "pack", "choix"].includes(S.screen)) return;
   const k = e.key.toLowerCase();
 
+  if (k === "m") { e.preventDefault(); messagePack(Son.basculer() ? "🔊 Son activé" : "🔇 Son coupé"); return; }
   if (k === "s") { e.preventDefault(); act("panel", {}); return; }
+
+  // choix du thème en Manche 2 : 1 à 9, dans l'ordre des boutons
+  if (/^[1-9]$/.test(k) && S.screen === "m2" && S.m2step > 0 && !S.m2cat[m2duo().id + "-r" + S.m2step]) {
+    const c = PACK.categories[+k - 1];
+    if (c) { e.preventDefault(); act("pickcat", { cat: c.id }); }
+    return;
+  }
   if (k === "r") {
     e.preventDefault();
     const n = optsAffichees().length, avant = S.revealCount || 0;
     S.revealCount = e.shiftKey ? Math.max(0, avant - 1) : Math.min(n, avant + 1);
     if (S.revealCount === avant) return;               // déjà tout révélé, ou rien à masquer
     optJustRevealed = S.revealCount > avant;
+    if (optJustRevealed) Son.option();
     render();
     return;
   }
@@ -4246,9 +4572,9 @@ document.addEventListener("keydown", e => {
     e.preventDefault();
     if (S.screen === "title") act("go", { to: "m1rules" });
     else if (S.screen === "m1") act("m1next", {});
-    else if (S.screen === "m1res" && S.eliminated.length === 2) act("startm2", {});
+    else if (S.screen === "m1res") { if (resteADevoiler()) act("devoile", {}); else if (S.eliminated.length === 2) act("startm2", {}); }
     else if (S.screen === "m2") { const d = m2duo(); if (!(S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step])) act("m2next", {}); }
-    else if (S.screen === "m2res" && S.finalists.length === 2) act("startm3", {});
+    else if (S.screen === "m2res") { if (resteADevoiler()) act("devoile", {}); else if (S.finalists.length === 2) act("startm3", {}); }
     else if (S.screen === "m3") { if (S.sudden || !S.finalists.some(m3Out)) act("m3next", {}); }
     else if (S.screen.endsWith("rules")) act("go", { to: S.screen.replace("rules", "") });
     return;
@@ -4779,11 +5105,21 @@ function autotest() {
     DUOS.forEach(d => { if (s1[d.id] !== attendu[d.id]) pb.push(`scores Manche 1 : ${duoName(d)} a ${s1[d.id]} au lieu de ${attendu[d.id]}`); });
     if (S.screen !== "m1res") pb.push("Manche 1 : n'arrive pas à l'élimination");
 
-    // 3. Manche 2 : les 2 derniers sortent, chaque duo marque à chaque tour
-    rank(s1, DUOS).slice(-2).forEach(d => joue("élimination", "elim", { id: d.id }));
+    // 3. classement dévoilé place par place ; sans égalité, les 2 derniers
+    //    sont présélectionnés (égalité recalculée ici, pas avec exAequo())
+    let garde = 0;
+    while (S.screen === "m1res" && (S.devoile || 0) < DUOS.length && garde++ < 20) joue("classement Manche 1, place suivante", "devoile");
+    if (document.querySelectorAll("#stage .rank.cache").length) pb.push("classement Manche 1 : des places restent cachées une fois tout dévoilé");
+    const r1 = rank(s1, DUOS);
+    const egal1 = s1[r1[r1.length - 3].id] === s1[r1[r1.length - 2].id];
+    if (!egal1 && String(S.eliminated.slice().sort()) !== String(r1.slice(-2).map(d => d.id).sort()))
+      pb.push("classement Manche 1 : les 2 derniers ne sont pas présélectionnés");
+    if (S.eliminated.length !== 2) { S.eliminated = []; r1.slice(-2).forEach(d => joue("élimination", "elim", { id: d.id })); }
+
+    // Manche 2 : chaque duo marque à chaque tour
     joue("lancer la Manche 2", "startm2");
     joue("Manche 2", "go", { to: "m2" });
-    let garde = 0;
+    garde = 0;
     while (S.screen === "m2" && garde++ < 500) {
       const d = m2duo();
       if (S.m2step > 0 && !S.m2cat[d.id + "-r" + S.m2step]) {
@@ -4800,7 +5136,9 @@ function autotest() {
     });
 
     // 4. finale : le premier finaliste perd tous ses cœurs
-    rank(scoresM2(), alive()).slice(0, 2).forEach(d => joue("finalistes", "final", { id: d.id }));
+    garde = 0;
+    while (S.screen === "m2res" && (S.devoile || 0) < alive().length && garde++ < 20) joue("classement Manche 2, place suivante", "devoile");
+    if (S.finalists.length !== 2) { S.finalists = []; rank(scoresM2(), alive()).slice(0, 2).forEach(d => joue("finalistes", "final", { id: d.id })); }
     if (document.querySelectorAll("#stage .rank.picked").length !== document.querySelectorAll("#stage .rank.picked.finale").length)
       pb.push("finalistes : affichés comme des éliminés");
     joue("lancer la finale", "startm3");

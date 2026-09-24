@@ -12,9 +12,13 @@ destinée doit rester lisible par quelqu'un qui ne code pas.
 
 ## Règles du projet
 
-- **Un seul fichier, aucune dépendance, aucun build.** `zamours.html` s'ouvre en double-clic et
-  marche hors connexion. Pas de npm, pas de CDN, pas de framework. Toute nouvelle fonctionnalité
-  tient dans ce fichier.
+- **Un fichier HTML et son dossier `lib/`, aucun build.** `zamours.html` s'ouvre en double-clic
+  et marche hors connexion. Le jeu tient dans ce fichier ; seules les librairies vivent à côté,
+  dans `lib/` : GSAP (animations enchaînées) et Tone.js (sons), en versions classiques chargées par
+  `<script src>`. Les versions « modules » ne se chargent pas en double-clic, et un lien vers
+  internet casserait le jeu dans une salle sans wifi. **Le jeu doit tourner sans `lib/`**, muet et
+  sans ces animations : toujours tester `window.gsap` et `window.Tone` avant de s'en servir.
+  Versions, sources et empreintes : `lib/README.md`.
 - **Un seul écran, vu par toute la salle.** Rien de ce qui s'affiche ne doit s'adresser à
   l'animateur seul : pas de réponse attendue, pas de « note pour toi », pas de « clique », « lis »
   ou « désigne ». Pendant le jeu, ses boutons se cachent (classe `en-jeu` sur `<body>`, écrans
@@ -43,10 +47,16 @@ destinée doit rester lisible par quelqu'un qui ne code pas.
    chargé, sans rien sauvegarder, puis affiche en bas à gauche ce qui casse. Elle vérifie :
    - qu'un pack vide est bloqué ;
    - que les scores de la Manche 1 correspondent aux cases cochées ;
-   - que la mention « options masquées » n'apparaît que sur un QCM ;
+   - qu'un QCM affiche autant de cases en pointillés que d'options, que R les révèle une à une et
+     s'arrête à la dernière, et qu'une question qui parle de « … » surligne une cible ;
+   - qu'une égalité se juge entre le dernier qualifié et le premier recalé ;
+   - que les classements se dévoilent en entier et présélectionnent les 2 derniers sans égalité ;
    - que la Manche 2 attribue le bon total à chaque duo ;
+   - que les finalistes ne s'affichent pas comme des éliminés, et que la finale ne propose ni
+     vainqueur ni mort subite avant qu'un duo soit à 0 cœur ;
    - que la finale désigne le bon vainqueur ;
-   - qu'aucun `undefined`, `NaN` ou `null` ne s'affiche à aucune étape.
+   - qu'aucun `undefined`, `NaN` ou `null` ne s'affiche à aucune étape, et qu'aucun écran ne
+     déborde (sur une fenêtre de taille projecteur).
 
    **À relancer après toute modification du moteur.** Le résultat est aussi exposé dans
    `window.resultatAutotest` (tableau vide = OK). Si la partie chargée n'est pas encore jouable
@@ -79,11 +89,14 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 | `CONTENU` | `PACK_DEFAUT` (la partie complète de juillet 2026), `PACK_VIDE`, et `MODELES`, les trois points de départ d'une partie : `nouvelle` (les questions de juillet sans les duos ni leurs Jokers), `vide`, `demo` (juillet complet) |
 | `PACK ACTIF ET VUES DÉRIVÉES` | `appliquerPack()`, `normaliserPack()` (remplit ce qui manque, assainit les ids), `validerPack()` (liste des erreurs bloquantes) |
 | `ÉTAT` | `S`, l'état de partie ; `freshState()`, `hydrate()` (recolle un état sauvegardé au pack actuel), `scoresM1()` et `scoresM2()` |
-| `TIMER`, `HELPERS`, `RENDU` | Chrono, `esc()`, `rank()` ; `render()` redessine tout l'écran à chaque action |
-| Animations | Révélation de question, faux départ du Joker, splash de manche, annonce de duo, sponsor, cœur brisé, victoire |
+| `TIMER`, `HELPERS` | Chrono, `esc()`, `rank()`, `exAequo()` |
+| Animations | Révélation de question, faux départ du Joker, splash de manche, annonce de duo, sponsor, cœur brisé, victoire (CSS et canvas) |
+| `SON` | `Son.match()`, `Son.tic()`, `Son.victoire()`… : effets fabriqués par Tone.js. Muet si coupé (touche M), pas encore débloqué par un geste, ou pendant l'auto-test |
+| `ANIMATIONS ENCHAÎNÉES (GSAP)` | « Feutres en l'air ! » à la fin du chrono, tirage d'une question (cartes battues) |
+| `RENDU` | `render()` choisit s'il faut une transition d'écran (View Transitions, natif), `dessiner()` redessine |
 | `SCREENS.*` | Un objet `{ top, stage, bottom }` par écran, qui renvoie du HTML |
 | `ACTIONS` | `act(action, data)` : un seul `switch`, déclenché par les attributs `data-act` des boutons |
-| `CLAVIER` | → ← Espace R S, coupés sur les écrans `edit`, `pack` et `choix`. R révèle l'option suivante d'un QCM et s'arrête à la dernière, Maj+R en retire une (`optsAffichees()`) |
+| `CLAVIER` | → ← Espace R S M Échap, 1 à 9, coupés sur les écrans `edit`, `pack` et `choix`. R révèle l'option suivante d'un QCM et s'arrête à la dernière, Maj+R en retire une (`optsAffichees()`). → dévoile aussi les classements place par place. 1 à 9 choisissent le thème en Manche 2. M coupe le son |
 | `ÉDITEUR DE PACK` | Onglets, écriture des champs, actions de structure, import et export JSON |
 | `AUTO-TEST`, `BOOT` | `autotest()`, puis le chargement : pack d'abord, état de partie ensuite |
 
@@ -121,6 +134,14 @@ l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récap
 
 ### Pièges connus — à respecter
 
+- **GSAP n'anime que ses propres calques** (`.feutres`, `.tirage`), jamais un élément déjà animé
+  en CSS : les deux se disputeraient les mêmes propriétés. Chaque calque GSAP a un filet
+  `setTimeout` qui le retire : GSAP se fige quand l'onglet est masqué.
+- **Une seule transition à la fois.** Les transitions d'écran (View Transitions) ne jouent pas
+  quand une entrée maison le fait déjà (`choregraphie()`). Pendant une transition, le rendu est
+  asynchrone : ne pas lire l'écran juste après `render()`.
+- **L'auto-test coupe le son, les animations GSAP et les transitions** (`AUTOTEST`). Il ne les
+  vérifie donc pas : les écouter et les regarder à la main, dans une fenêtre au premier plan.
 - **Les scores ne sont jamais stockés**, ils se recalculent depuis les cases cochées. Un compteur
   tenu à côté a déjà produit des scores à `NaN` puis négatifs.
 - **« A des options » se teste avec `aDesOptions(o)`**, jamais avec `!!q.opts` : le normaliseur
