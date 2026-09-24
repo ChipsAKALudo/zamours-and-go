@@ -16,7 +16,15 @@ destinée doit rester lisible par quelqu'un qui ne code pas.
   marche hors connexion. Pas de npm, pas de CDN, pas de framework. Toute nouvelle fonctionnalité
   tient dans ce fichier.
 - **Un seul écran, vu par toute la salle.** Rien de ce qui s'affiche ne doit s'adresser à
-  l'animateur seul (pas de réponse attendue, pas de « note pour toi »).
+  l'animateur seul : pas de réponse attendue, pas de « note pour toi », pas de « clique », « lis »
+  ou « désigne ». Pendant le jeu, ses boutons se cachent (classe `en-jeu` sur `<body>`, écrans
+  hors `ECRANS_PREPARATION`) et reviennent au mouvement de la souris ou avec Échap
+  (`montrerBarres()`). La barre du haut garde ses repères pour la salle : manche, question, cœurs.
+- **Lisible du fond de la salle.** Toute taille de texte de jeu s'écrit
+  `clamp(min, min(Xvw, Yvh), max)` : c'est la hauteur qui manque sur un projecteur. Aucun écran ne
+  doit déborder en 1280×720, 1366×768 ni 1920×1080 : l'auto-test le contrôle quand la fenêtre a
+  une taille de projecteur. Un écran de question se construit avec `plateau(gauche, droite)` :
+  question et rôles à gauche, options et chrono à droite.
 - **Le contenu s'écrit au neutre.** La même question sert pour toutes les personnes : « en rentrant
   du boulot » plutôt que « quand il rentre ». Options de QCM sans sujet : « Tourne autour toute la
   journée… ». Seuls les Jokers, écrits pour un duo précis, peuvent être genrés.

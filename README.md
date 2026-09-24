@@ -8,6 +8,10 @@ Un seul écran, projeté, piloté au clavier par l'animateur.
 Double-cliquer sur `zamours.html` (Chrome ou Edge conseillés), puis `F11` pour le plein écran.
 Aucune connexion nécessaire.
 
+Tout se pilote au clavier : `→` avancer, `←` revenir, `Espace` chrono, `R` révéler l'option suivante
+d'un QCM (`Maj+R` en retire une), `S` scores. Pendant le jeu, les boutons se cachent pour que la
+salle ne voie que le jeu : bouger la souris ou appuyer sur `Échap` les fait réapparaître.
+
 ## Vérifier après une modification
 
 Ouvrir `zamours.html#autotest` : la page joue une partie complète avec le pack chargé, sans rien

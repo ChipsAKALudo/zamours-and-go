@@ -157,7 +157,7 @@
   /* ---------- stage ---------- */
 
   .stage {
-    padding: clamp(12px, 2.2vh, 38px) var(--pad);
+    padding: clamp(10px, 1.6vh, 38px) var(--pad);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -171,7 +171,7 @@
     font-weight: 400;
     letter-spacing: .12em;
     text-transform: uppercase;
-    font-size: clamp(14px, 1.2vw, 20px);
+    font-size: clamp(14px, min(1.3vw, 2.4vh), 24px);
     color: var(--ink);
     display: flex;
     align-items: center;
@@ -196,7 +196,7 @@
   .question {
     font-family: var(--heavy);
     font-weight: 400;
-    font-size: clamp(21px, min(3.2vw, 4.2vh), 54px);
+    font-size: clamp(26px, min(3.6vw, 6.2vh), 84px);
     line-height: 1.08;
     text-wrap: balance;
     margin: 0 0 30px;
@@ -228,40 +228,52 @@
     border-color: var(--raised) transparent transparent transparent;
   }
 
-  .question.long  { font-size: clamp(19px, min(2.3vw, 3.2vh), 38px); max-width: 32ch; }
-  .question.xlong { font-size: clamp(15px, min(1.6vw, 2.3vh), 27px); max-width: 48ch; line-height: 1.2; }
+  .question.long  { font-size: clamp(21px, min(2.7vw, 4.7vh), 60px); max-width: 32ch; }
+  .question.xlong { font-size: clamp(18px, min(2vw, 3.5vh), 44px); max-width: 48ch; line-height: 1.2; }
 
-  /* QCM ouvert : la question a déjà été lue, elle cède la place aux options */
-  .question.compact {
-    font-size: clamp(18px, min(2.05vw, 3.2vh), 32px);
-    max-width: 38ch;
-    line-height: 1.16;
-    padding: 12px clamp(16px, 1.8vw, 26px);
-    margin-bottom: 26px;
+  /* ---------- plateau : l'écran de question sur toute la largeur ----------
+     La question et les rôles à gauche, les options et le chrono à droite, le
+     verdict en dessous. La moitié droite de l'écran restait vide, et le QCM
+     rétrécissait la question pour loger ses options dessous. */
+  .plateau {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: clamp(18px, 3vw, 64px);
+    align-items: center;
   }
-  .question.compact::before { bottom: -30px; border-width: 32px 23px 0 0; }
-  .question.compact::after  { left: 54px; bottom: -19px; border-width: 21px 15px 0 0; }
-  .question.compact + .options { gap: clamp(6px, .9vh, 10px); }
-  .question.compact + .options .option {
-    padding: clamp(7px, 1.1vh, 10px) 17px;
-    font-size: clamp(12px, min(1.05vw, 1.6vh), 17px);
-    line-height: 1.35;
+  .plateau-g, .plateau-d {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 1.8vh, 26px);
+    align-items: flex-start;
+    min-width: 0;
   }
+  .plateau .question { max-width: 100%; }
+  .plateau-d { align-items: center; }
+  .plateau-d .options { width: 100%; }
 
-  /* le chrono se fait plus discret pendant la lecture des options */
-  .stage:has(.question.compact) {
-    gap: clamp(9px, 1.3vh, 17px);
-    padding-top: clamp(10px, 1.6vh, 26px);
-    padding-bottom: clamp(10px, 1.6vh, 26px);
+  /* chrono seul à droite : en grand, le compte au centre de l'anneau */
+  .plateau-d .timerwrap { display: grid; justify-items: center; gap: 10px; }
+  .plateau-d .ring, .plateau-d .count { grid-area: 1 / 1; }
+  .plateau-d .count { align-self: center; font-size: clamp(44px, 11vh, 130px); }
+  .plateau-d .ring { width: clamp(110px, 24vh, 280px); height: auto; }
+  .plateau-d .timerwrap .subline { grid-area: 2 / 1; text-align: center; }
+  /* sous des options, il se fait plus petit et se met à côté de son texte :
+     trois options longues doivent tenir sans faire défiler l'écran */
+  .plateau-d:has(.options) .timerwrap { grid-template-columns: auto 1fr; justify-items: start; column-gap: 16px; width: 100%; }
+  .plateau-d:has(.options) .timerwrap .subline { grid-area: 1 / 2; text-align: left; align-self: center; }
+  .plateau-d:has(.options) .ring { width: clamp(64px, 11vh, 130px); }
+  .plateau-d:has(.options) .count { font-size: clamp(26px, 5vh, 60px); justify-self: center; }
+
+  @media (max-width: 900px) { .plateau { grid-template-columns: 1fr; } }
+
+  /* le duo qui joue, en Manche 2 : lisible du fond de la salle */
+  .duo-en-jeu {
+    font-family: var(--display);
+    font-size: clamp(22px, min(2.8vw, 5vh), 64px);
+    letter-spacing: .03em;
+    line-height: 1.1;
   }
-  .stage:has(.question.compact) .ring { width: 54px; height: 54px; }
-  .stage:has(.question.compact) .count { font-size: clamp(26px, min(2.6vw, 4vh), 42px); }
-  .stage:has(.question.compact) .timerwrap { gap: 14px; }
-  .stage:has(.question.compact) .ring { width: 46px; height: 46px; }
-  .stage:has(.question.compact) .subline { font-size: clamp(12px, min(1vw, 1.6vh), 17px); }
-  .stage:has(.question.compact) .question { margin-bottom: 22px; }
-  .stage:has(.question.compact) .question::before { bottom: -26px; border-width: 28px 20px 0 0; }
-  .stage:has(.question.compact) .question::after  { left: 52px; bottom: -16px; border-width: 18px 13px 0 0; }
 
   /* le repère de cible, surligné comme le prénom dans la pastille */
   .ph {
@@ -275,7 +287,7 @@
   /* bandeau des rôles : qui écrit, qui devine */
   .roles {
     display: inline-block;
-    font-size: clamp(12px, min(1.05vw, 1.7vh), 18px);
+    font-size: clamp(16px, min(1.6vw, 2.9vh), 34px);
     line-height: 1.3;
     color: var(--ink);
     background: var(--raised);
@@ -292,7 +304,7 @@
   .roles.qcm b { color: var(--ink); }
 
   .subline {
-    font-size: clamp(15px, 1.25vw, 21px);
+    font-size: clamp(15px, min(1.35vw, 2.4vh), 26px);
     color: var(--muted);
     max-width: 62ch;
     line-height: 1.5;
@@ -375,26 +387,32 @@
 
   /* ---------- QCM ---------- */
 
-  .options { display: flex; flex-direction: column; gap: 13px; max-width: 74ch; }
+  .options { display: flex; flex-direction: column; gap: clamp(8px, 1.2vh, 14px); max-width: 74ch; }
 
   .option {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 16px;
+    gap: clamp(10px, 1.1vw, 18px);
     align-items: center;
-    padding: 13px 20px;
+    padding: clamp(7px, 1.1vh, 14px) clamp(12px, 1.3vw, 22px);
     background: var(--raised);
     border: 3px solid var(--ink);
     border-radius: 16px;
     box-shadow: var(--cutout-sm);
-    font-size: clamp(15px, 1.25vw, 21px);
-    line-height: 1.45;
+    font-size: clamp(16px, min(1.6vw, 2.9vh), 36px);
+    line-height: 1.35;
   }
+
+  /* options très longues (scénarios) : un cran plus petit, comme .question.long */
+  .options.longues .option { font-size: clamp(14px, min(1.3vw, 2.2vh), 30px); }
+
+  /* option pas encore révélée : sa place est gardée, la salle voit combien il y en a */
+  .option.vide { opacity: .35; border-style: dashed; box-shadow: none; min-height: 2.9em; }
 
   .option .letter {
     font-family: var(--display);
     font-weight: 400;
-    font-size: 1.5em;
+    font-size: 1.2em;
     width: 1.6em; height: 1.6em;
     display: grid;
     place-items: center;
@@ -421,20 +439,6 @@
   }
   .option.pop .letter { animation: letterPop .46s .05s cubic-bezier(.2,.9,.3,1.2) both; }
 
-  .hidden-note {
-    font-family: var(--display);
-    font-weight: 400;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--ink);
-    background: var(--raised);
-    border: 3px dashed var(--ink);
-    border-radius: 14px;
-    padding: 20px 24px;
-    font-size: clamp(13px, 1.1vw, 18px);
-    max-width: 60ch;
-  }
-
   /* ---------- chrono ---------- */
 
   .timerwrap { display: flex; align-items: center; gap: 20px; }
@@ -453,7 +457,7 @@
     font-family: var(--display);
     font-weight: 400;
     font-variant-numeric: tabular-nums;
-    font-size: clamp(38px, 4vw, 66px);
+    font-size: clamp(38px, min(4vw, 7vh), 90px);
     line-height: 1;
     color: var(--ink);
     letter-spacing: .02em;
@@ -468,9 +472,9 @@
   .chip {
     font-family: var(--display);
     font-weight: 400;
-    font-size: clamp(16px, 1.35vw, 24px);
+    font-size: clamp(16px, min(1.5vw, 2.8vh), 32px);
     letter-spacing: .05em;
-    padding: clamp(7px, 1.2vh, 11px) clamp(14px, 1.4vw, 20px);
+    padding: clamp(7px, 1.2vh, 14px) clamp(14px, 1.4vw, 24px);
     background: var(--raised);
     border: 3px solid var(--ink);
     border-radius: 999px;
@@ -488,13 +492,13 @@
   .chip:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 
   .chip .mark {
-    width: 22px; height: 22px;
+    width: 1.8em; height: 1.8em;   /* en em : suit la taille de la pastille */
     border: 3px solid var(--ink);
     background: var(--raised);
     border-radius: 50%;
     display: grid;
     place-items: center;
-    font-size: 13px;
+    font-size: .58em;
     line-height: 1;
     color: var(--ink);
   }
@@ -502,6 +506,10 @@
   /* matché : le duo passe en jaune criard, la coche en rose */
   .chip.on { background: var(--yellow); }
   .chip.on .mark { background: var(--rose); color: #fff; }
+
+  /* simple étiquette (duos de la soirée sur l'écran titre) : pas un bouton */
+  .chip.affiche { cursor: default; }
+  .chip.affiche:hover, .chip.affiche:active { transform: none; box-shadow: var(--cutout-sm); }
 
   /* cœurs de vie de la finale */
   .hprow { margin-left: 8px; letter-spacing: 2px; white-space: nowrap; }
@@ -682,21 +690,21 @@
   }
   .pickrow .btn { font-size: clamp(11px, min(.95vw, 1.5vh), 15px); padding: 7px 13px; }
 
-  .ranks { display: flex; flex-direction: column; gap: clamp(7px, 1.1vh, 11px); max-width: 780px; }
+  .ranks { display: flex; flex-direction: column; gap: clamp(5px, .9vh, 11px); width: min(1100px, 100%); }
 
   .rank {
     display: grid;
-    grid-template-columns: 46px 1fr auto;
+    grid-template-columns: 2.4em 1fr auto;
     gap: 18px;
     align-items: center;
-    padding: clamp(9px, 1.3vh, 13px) 18px;
+    padding: clamp(6px, 1vh, 13px) 18px;
     border: 3px solid var(--ink);
     border-radius: 14px;
     background: var(--raised);
     box-shadow: var(--cutout-sm);
     font-family: var(--display);
     font-weight: 400;
-    font-size: clamp(17px, min(1.55vw, 2.6vh), 27px);
+    font-size: clamp(17px, min(1.8vw, 2.9vh), 36px);
     letter-spacing: .04em;
     color: var(--ink);
     text-align: left;
@@ -769,11 +777,20 @@
     padding: 13px 18px;
     background: var(--yellow);
     box-shadow: var(--cutout-sm);
-    font-size: clamp(14px, 1.15vw, 19px);
+    font-size: clamp(14px, min(1.3vw, 2.3vh), 26px);
     font-weight: 600;
     max-width: 68ch;
     line-height: 1.5;
   }
+
+  /* ---------- barres de commandes, pendant le jeu ----------
+     La salle ne voit que le jeu : pas de boutons ni de raccourcis à l'écran.
+     Les barres reviennent au moindre mouvement de souris, ou avec Échap
+     (montrerBarres()). La barre du haut garde ses repères pour la salle
+     (manche, question, cœurs) : seuls ses boutons se cachent. */
+  body.en-jeu .rail.bottom, body.en-jeu .rail .btn { transition: opacity .3s; }
+  body.en-jeu:not(.barres) .rail.bottom,
+  body.en-jeu:not(.barres) .rail .btn { opacity: 0; pointer-events: none; }
 
   /* ---------- éditeur de pack ---------- */
 
@@ -1037,14 +1054,14 @@
     font-weight: 400;
     letter-spacing: .05em;
     text-transform: uppercase;
-    font-size: clamp(15px, min(1.4vw, 2.2vh), 24px);
+    font-size: clamp(16px, min(1.7vw, 2.9vh), 34px);
     margin: 0 0 6px;
     color: var(--rose-dim);
   }
 
   .step p {
     margin: 0;
-    font-size: clamp(13px, min(1.05vw, 1.7vh), 18px);
+    font-size: clamp(14px, min(1.4vw, 2.5vh), 28px);
     line-height: 1.45;
     color: var(--ink);
   }
@@ -1054,7 +1071,7 @@
   .stage:has(.ranks) .warn { padding: 10px 16px; }
 
   .cats { display: flex; flex-wrap: wrap; gap: 11px; }
-  .cats .btn { padding: 9px 17px; }
+  .cats .btn { padding: .5em 1em; font-size: clamp(16px, min(1.6vw, 3vh), 34px); }
   .stage:has(.cats) .question { font-size: clamp(24px, min(3.2vw, 5vh), 48px); margin-bottom: 28px; }
 
   /* ---------- annonce de duo (Manche 2) ---------- */
@@ -2723,15 +2740,21 @@ function el(html) {
   return t.content.firstElementChild;
 }
 
-function timerBlock() {
+// qui écrit pendant le chrono : ça change selon la manche et le type de question
+function timerBlock(quiEcrit) {
   return `<div class="timerwrap">
     <svg class="ring" id="ring" viewBox="0 0 74 74" aria-hidden="true">
       <circle class="track" cx="37" cy="37" r="30"></circle>
       <circle class="bar" id="tbar" cx="37" cy="37" r="30"></circle>
     </svg>
     <div class="count" id="count">${Math.ceil(S.tLeft)}</div>
-    <div class="subline" style="max-width:26ch">Les cibles écrivent.<br>${CHRONO} secondes, feutres en l'air à la fin.</div>
+    <div class="subline" style="max-width:26ch">${quiEcrit}.<br>${CHRONO} secondes, feutres en l'air à la fin.</div>
   </div>`;
+}
+
+// Écran de question : question et rôles à gauche, options et chrono à droite.
+function plateau(gauche, droite) {
+  return `<div class="plateau"><div class="plateau-g">${gauche}</div><div class="plateau-d">${droite}</div></div>`;
 }
 
 // boutons du chrono, communs aux trois manches
@@ -2742,11 +2765,26 @@ function boutonsChrono() {
 
 /* ============================ RENDU ============================ */
 
+/* Pendant le jeu, les commandes de l'animateur se cachent : la salle ne voit
+   que le jeu. Elles reviennent 4 s au moindre mouvement de souris, avec Échap,
+   ou tant qu'une confirmation attend son second clic. Les écrans de
+   préparation, eux, les gardent toujours. */
+const ECRANS_PREPARATION = ["title", "choix", "pack", "edit", "resume", "resume3"];
+let barresTimer = null;
+
+function montrerBarres() {
+  document.body.classList.add("barres");
+  clearTimeout(barresTimer);
+  barresTimer = setTimeout(() => { if (!arme) document.body.classList.remove("barres"); }, 4000);
+}
+document.addEventListener("mousemove", montrerBarres);
+
 function render() {
   const top = document.getElementById("rail-top");
   const stage = document.getElementById("stage");
   const bot = document.getElementById("rail-bottom");
   const fns = SCREENS[S.screen] || SCREENS.title;
+  document.body.classList.toggle("en-jeu", !ECRANS_PREPARATION.includes(S.screen));
   top.innerHTML = fns.top ? fns.top() : "";
   stage.innerHTML = fns.stage();
   bot.innerHTML = fns.bottom ? fns.bottom() : "";
@@ -3032,6 +3070,7 @@ function confirme(cle) {
   clearTimeout(armeTimer);
   if (arme === cle) { arme = null; return true; }
   arme = cle;
+  montrerBarres();   // le « Confirmer ? » doit rester visible pendant le jeu
   armeTimer = setTimeout(() => {
     arme = null;
     // pas de re-rendu pendant une saisie dans l'éditeur : il ferait perdre le curseur
@@ -3357,15 +3396,16 @@ const SCREENS = {};
 /* ---------- titre ---------- */
 
 SCREENS.title = {
-  top: () => railBase("Pupitre animateur"),
+  // l'aide clavier reste dans la barre : pendant le jeu, les commandes se cachent (Échap les rappelle)
+  top: () => railBase(`Clavier : <kbd>→</kbd> avancer · <kbd>Espace</kbd> chrono · <kbd>R</kbd> révéler · <kbd>S</kbd> scores · <kbd>Échap</kbd> commandes`),
   stage: () => {
     const [haut, sous] = titreParts();
     return `
     <h1 class="title-h1"><span class="t-z">${esc(haut)}</span>${sous ? `<span class="t-go">${esc(sous).replace(/ /g, "&nbsp;")}</span>` : ""}</h1>
     <div class="subline" style="max-width:56ch">
-      ${DUOS.length} duos · 3 manches · <em>remise à zéro après la Manche 1</em>.<br>
-      Pilotage clavier : <kbd>→</kbd> avancer · <kbd>Espace</kbd> chrono · <kbd>R</kbd> révéler · <kbd>S</kbd> scores.
+      Ce soir, ${DUOS.length} duos · 3 manches · <em>remise à zéro après la Manche 1</em>.
     </div>
+    <div class="scorerow">${DUOS.map(d => `<span class="chip affiche">${esc(duoName(d))}</span>`).join("")}</div>
     <div class="warn">Les points de la Manche 1 ne servent qu'à qualifier : tout le monde repart de zéro pour la Manche 2.</div>`;
   },
   bottom: () => `<button class="btn primary" data-act="go" data-to="m1rules">Commencer la Manche 1</button>
@@ -3393,19 +3433,18 @@ SCREENS.m1 = {
       <div class="kicker">
         <span class="tag">${isE ? "⚡ Éclair" : "🔦 Spotlight"}</span>
         <span>${q.pts} point${q.pts > 1 ? "s" : ""}</span>
-        <span style="color:var(--muted)">${isE ? "révélation simultanée — tout le monde en même temps" : "révélation duo par duo — on étire"}</span>
+        <span style="color:var(--muted)">${isE ? "tout le monde retourne son ardoise en même temps" : "on retourne les ardoises duo par duo"}</span>
       </div>
-      <h1 class="question ${qCls(q.q, qcm)}"><span class="qtxt">${qText(q.q)}</span></h1>
-      ${qcm && cible
-        ? `<div class="roles">La question parle du <span class="ph">prénom surligné</span> · les deux choisissent une lettre</div>`
-        : rolesBand(null, 0, qcm)}
-      ${q.note ? `<div class="subline"><em>${esc(q.note)}</em></div>` : ""}
-      ${qcm ? qcmBlock(q.opts) : ""}
-      ${timerBlock()}
+      ${plateau(`
+        <h1 class="question ${qCls(q.q)}"><span class="qtxt">${qText(q.q)}</span></h1>
+        ${qcm && cible
+          ? `<div class="roles">La question parle du <span class="ph">prénom surligné</span> · les deux choisissent une lettre</div>`
+          : rolesBand(null, 0, qcm)}
+        ${q.note ? `<div class="subline"><em>${esc(q.note)}</em></div>` : ""}`, `
+        ${qcm ? qcmBlock(q.opts) : ""}
+        ${timerBlock(qcm ? "Tout le monde choisit une lettre" : "Les prénoms surlignés écrivent")}`)}
       <div>
-        <div class="eyebrow" style="margin-bottom:11px">Qui a matché ? — <span style="color:var(--amber)">${qcm
-          ? "les DEUX doivent avoir choisi la même lettre"
-          : "le prénom souligné écrit sur l'ardoise, l'autre devine"}</span></div>
+        <div class="eyebrow" style="margin-bottom:11px">${qcm ? "Même lettre :" : "Ont trouvé :"}</div>
         <div class="scorerow">
           ${DUOS.map(d => `<button class="chip ${marks[d.id] ? "on" : ""}" data-act="m1mark" data-id="${d.id}">
             <span class="mark">${marks[d.id] ? "✓" : ""}</span>${cible ? duoNameCible(d, S.m1i) : esc(duoName(d))}</button>`).join("")}
@@ -3551,7 +3590,7 @@ function regles() {
     lead: `Mêmes questions pour les ${DUOS.length} duos. Les 2 derniers sortent — puis tout le monde repart de zéro.`,
     steps: [
       { icon: "slate", t: "La question porte sur UNE personne",
-        d: `C'est le <b>prénom surligné en jaune</b>. Exemple : « le plat préféré de <b>${ex}</b> » → c'est <b>${ex}</b>, et personne d'autre, qui écrit <b>SON</b> vrai plat préféré.` },
+        d: `C'est le <b>prénom surligné en jaune</b>. Exemple : « le plat préféré de <span class="target">${ex}</span> » → c'est <b>${ex}</b>, et personne d'autre, qui écrit <b>SON</b> vrai plat préféré.` },
       { icon: "think", t: "L'autre doit le deviner",
         d: `L'autre membre du duo n'écrit pas <b>son propre</b> plat : il faut écrire <b>le plat que ${ex} a mis</b> sur son ardoise.` },
       { icon: "heart", t: "Même réponse = des points",
@@ -3635,7 +3674,7 @@ SCREENS.m1res = {
     const r = rank(sc, DUOS);
     const cut = exAequo(sc, r, r.length - 2);   // 2 duos sortent
     return `
-      <div class="kicker"><span class="tag">Élimination</span><span>désigne les 2 duos qui sortent</span></div>
+      <div class="kicker"><span class="tag">Élimination</span><span>les 2 derniers rejoignent le Jury du Fail</span></div>
       ${cut !== null ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
       <div class="ranks">
         ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${sc[d.id] === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
@@ -3653,14 +3692,19 @@ SCREENS.m1res = {
 /* ---------- manche 2 ---------- */
 
 // 3 paliers de taille pour que la bulle tienne toujours dans l'écran
-function qCls(t, compact) {
-  const base = t.length > 175 ? "xlong" : t.length > 90 ? "long" : "";
-  return compact ? base + " compact" : base;
+function qCls(t) {
+  return t.length > 175 ? "xlong" : t.length > 90 ? "long" : "";
 }
 
-// Toute question à QCM s'affiche en bulle compacte (qCls(t, true)), options
-// masquées ou non : la place des options est réservée d'avance, et la bulle ne
-// change pas de taille au moment où on appuie sur R.
+// En Manche 2, le duo qui joue et, hors QCM, qui écrit (surligné)
+function duoEnJeu(d) {
+  return `<div class="duo-en-jeu">${m2IsQcm() ? esc(duoName(d)) : duoNameCible(d, S.m2step)}</div>`;
+}
+
+// ce que la salle lit sous le chrono en Manche 2
+function quiEcritM2(d) {
+  return m2IsQcm() ? "Les deux choisissent une lettre" : esc(cibleName(d, S.m2step)) + " écrit";
+}
 
 function m2duo() { return byId(S.m2order[S.m2i]); }
 
@@ -3714,22 +3758,25 @@ SCREENS.m2 = {
       const montreGag = !!(j.gag && j.gag.trim()) && !gagFait[d.id + "|joker"];
       const qcm = aDesOptions(j.opts);
       return `
+        ${duoEnJeu(d)}
         <div class="kicker"><span class="tag">🃏 Joker</span><span>3 points</span><span style="color:var(--muted)">sur-mesure — c'est le moment de la manche</span></div>
-        ${montreGag ? `
+        ${plateau(montreGag ? `
           <h1 class="question is-gag ${qCls(j.gag)}"><span class="qtxt">${esc(j.gag)}</span><i class="strike"></i></h1>`
         : `
-          <h1 class="question ${qCls(j.q, qcm)}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
-          ${rolesBand(d, S.m2step, qcm)}`}
-        ${qcm ? qcmBlock(j.opts) : ""}
-        ${timerBlock()}
+          <h1 class="question ${qCls(j.q)}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
+          ${rolesBand(d, S.m2step, qcm)}`, `
+          ${qcm && !montreGag ? qcmBlock(j.opts) : ""}
+          ${timerBlock(quiEcritM2(d))}`)}
         ${awardRow(key + "-j", 3)}`;
     }
 
     const roundKey = key + "-r" + S.m2step;
 
     if (!S.m2cat[roundKey]) {
+      // qui écrira dépend de la question tirée (un QCM n'a pas de cible) : nom seul
       return `
-        <div class="kicker"><span class="tag">🗂️ Catégorie</span><span>${esc(duoName(d))} annonce son thème</span></div>
+        <div class="duo-en-jeu">${esc(duoName(d))}</div>
+        <div class="kicker"><span class="tag">🗂️ Catégorie</span><span>annonce son thème</span></div>
         <h1 class="question">Quel thème ?</h1>
         <div class="subline">Une question est tirée au hasard dans le thème choisi, puis retirée de la pile.</div>
         <div class="cats">
@@ -3747,12 +3794,14 @@ SCREENS.m2 = {
     const qtext = item.q;
     const opts = aDesOptions(item.opts) ? item.opts : null;
     return `
+      ${duoEnJeu(d)}
       <div class="kicker"><span class="tag">${esc(cat.label)}</span><span>2 points</span>
         ${opts ? '<span style="color:var(--muted)">QCM — les DEUX doivent choisir la même lettre</span>' : ""}</div>
-      <h1 class="question ${qCls(qtext, !!opts)}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
-      ${rolesBand(d, S.m2step, !!opts)}
-      ${opts ? qcmBlock(opts) : ""}
-      ${timerBlock()}
+      ${plateau(`
+        <h1 class="question ${qCls(qtext)}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
+        ${rolesBand(d, S.m2step, !!opts)}`, `
+        ${opts ? qcmBlock(opts) : ""}
+        ${timerBlock(quiEcritM2(d))}`)}
       ${awardRow(roundKey, 2)}`;
   },
   bottom: () => {
@@ -3790,22 +3839,18 @@ function qcmBlock(opts) {
   const shown = Math.min(S.revealCount || 0, opts.length);
   const pop = optJustRevealed;
   optJustRevealed = false;
-  if (shown === 0) {
-    return `<div class="hidden-note">Options masquées — lis l'intitulé, puis <kbd>R</kbd> pour les révéler une par une.</div>`;
-  }
-  return `<div class="options">${opts.slice(0, shown).map((o, i) =>
-    `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABCDEF"[i]}</span><span>${esc(o)}</span></div>`).join("")}</div>`;
+  // les options pas encore révélées gardent leur place, en pointillés : la
+  // salle voit combien il y en a, et rien ne saute quand on les révèle
+  const longues = opts.join("").length > 280 ? " longues" : "";
+  return `<div class="options${longues}">${opts.map((o, i) => i < shown
+    ? `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABCDEF"[i]}</span><span>${esc(o)}</span></div>`
+    : `<div class="option vide"><span class="letter">${"ABCDEF"[i]}</span><span></span></div>`).join("")}</div>`;
 }
 
 function awardRow(markKey, pts) {
   const on = !!S.m2marks[markKey];
-  const d = m2duo();
-  const label = m2IsQcm()
-    ? `Ça matche ? — <span style="color:var(--amber)">les DEUX doivent avoir choisi la même lettre</span>`
-    : `Ça matche ? — <span style="color:var(--amber)">${esc(cibleName(d, S.m2step))}</span> écrit sur l'ardoise, `
-      + `<span style="color:var(--amber)">${esc(devineurName(d, S.m2step))}</span> devine`;
   return `<div>
-    <div class="eyebrow" style="margin-bottom:11px">${label}</div>
+    <div class="eyebrow" style="margin-bottom:11px">${m2IsQcm() ? "Même lettre ?" : "Réponse trouvée ?"}</div>
     <div class="scorerow">
       <button class="chip ${on ? "on" : ""}" data-act="m2mark" data-key="${markKey}" data-pts="${pts}">
         <span class="mark">${on ? "✓" : ""}</span>Accordé — ${pts} pt${pts > 1 ? "s" : ""}</button>
@@ -3822,7 +3867,7 @@ SCREENS.m2res = {
     const r = rank(sc, alive());
     const cut = exAequo(sc, r, 2);   // 2 duos vont en finale
     return `
-      <div class="kicker"><span class="tag">Finalistes</span><span>désigne les 2 duos qui passent</span></div>
+      <div class="kicker"><span class="tag">Finalistes</span><span>les 2 premiers vont en finale</span></div>
       ${cut !== null ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
       <div class="ranks">
         ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked finale" : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
@@ -3851,24 +3896,23 @@ SCREENS.m3 = {
       <div class="kicker"><span class="tag">${S.sudden ? "☠️ Mort subite" : "🏆 Longueur d'onde"}</span>
         <span>${S.sudden ? "plus de cœurs : le premier qui matche gagne" : M3_LIVES + " cœurs par duo"}</span>
         <span style="color:var(--muted)">les DEUX membres écrivent à l'aveugle, on révèle ensemble</span></div>
-      <h1 class="question ${qCls(q)}"><span class="qtxt">${esc(q)}</span></h1>
-      ${S.sudden
-        ? `<div class="roles fini">Les cœurs ne comptent plus · <b>le premier duo qui matche remporte la partie</b> · si les deux matchent ou si les deux ratent, on enchaîne</div>`
-        : S.finalists.some(m3Out)
-        ? (() => {
-            const ko = S.finalists.filter(m3Out);
-            return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>${ko.length > 1 ? "mort subite pour les départager" : "la manche est terminée"}</b></div>`;
-          })()
-        : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}
-      ${timerBlock()}
+      ${plateau(`
+        <h1 class="question ${qCls(q)}"><span class="qtxt">${esc(q)}</span></h1>
+        ${S.sudden
+          ? `<div class="roles fini">Les cœurs ne comptent plus · <b>le premier duo qui matche remporte la partie</b> · si les deux matchent ou si les deux ratent, on enchaîne</div>`
+          : S.finalists.some(m3Out)
+          ? (() => {
+              const ko = S.finalists.filter(m3Out);
+              return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>${ko.length > 1 ? "mort subite pour les départager" : "la manche est terminée"}</b></div>`;
+            })()
+          : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}`,
+        timerBlock("Les deux écrivent, sans se parler"))}
       <div>
-        <div class="eyebrow" style="margin-bottom:11px">${S.sudden
-          ? "Qui a matché ? — clic pour déclarer le vainqueur"
-          : "Qui n'a <em>pas</em> matché ? — clic pour retirer un cœur"}</div>
+        <div class="eyebrow" style="margin-bottom:11px">${S.sudden ? "Premier duo à trouver :" : "Réponses différentes :"}</div>
         <div class="scorerow">
           ${S.sudden
             ? S.finalists.map(id => `<button class="chip win" data-act="sdwin" data-id="${id}">
-                <span class="mark">🏆</span>${esc(duoName(byId(id)))} a matché</button>`).join("")
+                <span class="mark">🏆</span>${esc(duoName(byId(id)))} a trouvé</button>`).join("")
             : S.finalists.map(id => `<button class="chip ${m3Failed(id) ? "fail" : ""}" data-act="m3mark" data-id="${id}" ${m3Out(id) && !m3Failed(id) ? "disabled" : ""}>
                 <span class="mark">${m3Failed(id) ? "✗" : ""}</span>${esc(duoName(byId(id)))} ${heartRow(id)}</button>`).join("")}
         </div>
@@ -4181,6 +4225,7 @@ function act(a, data) {
 
 document.addEventListener("keydown", e => {
   if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+  if (e.key === "Escape") { montrerBarres(); return; }   // rappelle les commandes cachées
   // écrans de préparation : aucun raccourci de jeu (Espace y lançait le chrono en fond)
   if (["edit", "pack", "choix"].includes(S.screen)) return;
   const k = e.key.toLowerCase();
@@ -4652,11 +4697,21 @@ function autotest() {
 
   const texteVisible = () => [...document.querySelectorAll("#app, #panel, .splash, .announce, .flash, .sponsor, .hbreak, .victory")]
     .map(n => n.textContent).join(" ");
+  // Un écran qui déborde fait apparaître une barre de défilement sur le
+  // projecteur. Contrôlé seulement sur une fenêtre de taille projecteur : une
+  // petite fenêtre déborde forcément.
+  const tailleProjecteur = innerWidth >= 1280 && innerHeight >= 720;
+  const deborde = new Set();
   const joue = (etape, a, data) => {
     try {
       act(a, data || {});
       const m = texteVisible().match(/.{0,40}\b(undefined|NaN|null)\b|\[object \w+\]/);
       if (m) pb.push(`${etape} : « ${m[0].trim()} » à l'écran`);
+      const st = document.getElementById("stage");
+      if (tailleProjecteur && st.scrollHeight > st.clientHeight + 2 && !deborde.has(etape)) {
+        deborde.add(etape);
+        pb.push(`${etape} : l'écran déborde de ${st.scrollHeight - st.clientHeight} px en ${innerWidth}×${innerHeight}`);
+      }
     } catch (e) { pb.push(`${etape} : plantage — ${e.message}`); }
   };
 
@@ -4699,8 +4754,9 @@ function autotest() {
     DUOS.forEach(d => attendu[d.id] = 0);
     M1.forEach((q, i) => {
       // comparé à opts.length, pas à aDesOptions() : le test ne doit pas partager le code qu'il vérifie
-      const masque = !!document.querySelector("#stage .hidden-note");
-      if (masque !== q.opts.length > 0) pb.push(`Manche 1, question ${i + 1} : « options masquées » ${masque ? "affiché sans QCM" : "absent sur un QCM"}`);
+      // avant R : autant de cases en pointillés que d'options, et aucune sans QCM
+      const masquees = document.querySelectorAll("#stage .option.vide").length;
+      if (masquees !== q.opts.length) pb.push(`Manche 1, question ${i + 1} : ${masquees} option(s) masquée(s) affichée(s) pour ${q.opts.length} option(s)`);
       // une question qui parle de quelqu'un doit surligner une cible, QCM ou pas
       if (/\.\.\.|…/.test(q.q) && !document.querySelector("#stage .scorerow .target"))
         pb.push(`Manche 1, question ${i + 1} : la question parle de « … » mais aucun prénom n'est surligné`);
@@ -4708,9 +4764,9 @@ function autotest() {
       if (q.opts.length) {
         const touche = shift => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: shift ? "R" : "r", shiftKey: shift, bubbles: true }));
         for (let k = 0; k < q.opts.length + 2; k++) touche(false);
-        const vues = document.querySelectorAll("#stage .option").length;
+        const vues = document.querySelectorAll("#stage .option:not(.vide)").length;
         touche(true);
-        const apres = document.querySelectorAll("#stage .option").length;
+        const apres = document.querySelectorAll("#stage .option:not(.vide)").length;
         if (vues !== q.opts.length || apres !== q.opts.length - 1)
           pb.push(`Manche 1, question ${i + 1} : touche R — ${vues} option(s) après ${q.opts.length + 2} appuis, ${apres} après Maj+R`);
       }
