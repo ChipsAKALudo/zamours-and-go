@@ -29,9 +29,13 @@ destinée doit rester lisible par quelqu'un qui ne code pas.
   doit déborder en 1280×720, 1366×768 ni 1920×1080 : l'auto-test le contrôle quand la fenêtre a
   une taille de projecteur. Un écran de question se construit avec `plateau(gauche, droite)` :
   question et rôles à gauche, options et chrono à droite.
-- **Le contenu s'écrit au neutre.** La même question sert pour toutes les personnes : « en rentrant
-  du boulot » plutôt que « quand il rentre ». Options de QCM sans sujet : « Tourne autour toute la
-  journée… ». Seuls les Jokers, écrits pour un duo précis, peuvent être genrés.
+- **Les accords suivent la personne ciblée.** Chaque personne a un réglage il/elle (`pa`, `pb` d'un
+  duo, onglet Duos de l'éditeur). Les textes écrivent les deux formes entre accolades :
+  « {Il/Elle} range ses affaires », « {le dernier/la dernière} » (`accorder()`). La Manche 1, qui
+  s'adresse à tous les duos à la fois, affiche les deux formes (« Il/Elle ») : y préférer des
+  tournures sans accord quand c'est possible. Sans réglage, le prénom remplace le il/elle sujet
+  (« Flo la remet »), sauf collé à un trait d'union ou une apostrophe. **Ne jamais deviner le
+  il/elle d'une personne d'après son prénom** : c'est la personne qui prépare la partie qui le règle.
 - **Tout texte venant du pack passe par `esc()`** avant d'entrer dans le HTML : un pack peut venir
   de quelqu'un d'autre.
 - **Pas de `confirm()` ni d'`alert()`** : un navigateur réglé pour bloquer les boîtes de dialogue les
@@ -92,8 +96,8 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 | `TIMER`, `HELPERS` | Chrono, `esc()`, `rank()`, `exAequo()` |
 | Animations | Révélation de question, faux départ du Joker, splash de manche, annonce de duo, sponsor, cœur brisé, victoire (CSS et canvas) |
 | `SON` | `Son.match()`, `Son.tic()`, `Son.victoire()`… : effets fabriqués par Tone.js. Muet si coupé (touche M), pas encore débloqué par un geste, ou pendant l'auto-test |
-| `ANIMATIONS ENCHAÎNÉES (GSAP)` | « Feutres en l'air ! » à la fin du chrono, tirage d'une question (cartes battues) |
-| `RENDU` | `render()` choisit s'il faut une transition d'écran (View Transitions, natif), `dessiner()` redessine |
+| `ANIMATIONS ENCHAÎNÉES (GSAP)` | « Feutres en l'air ! » à la fin du chrono, tirage d'une question (cartes battues), gag du sponsor (`playSponsor()`) |
+| `RENDU` | `render()` choisit l'entrée de la scène (volet diagonal pour un autre écran, fondu pour la question suivante) quand aucune entrée maison ne joue ; `dessiner()` redessine, toujours de façon synchrone |
 | `SCREENS.*` | Un objet `{ top, stage, bottom }` par écran, qui renvoie du HTML |
 | `ACTIONS` | `act(action, data)` : un seul `switch`, déclenché par les attributs `data-act` des boutons |
 | `CLAVIER` | → ← Espace R S M Échap, 1 à 9, coupés sur les écrans `edit`, `pack` et `choix`. R révèle l'option suivante d'un QCM et s'arrête à la dernière, Maj+R en retire une (`optsAffichees()`). → dévoile aussi les classements place par place. 1 à 9 choisissent le thème en Manche 2. M coupe le son |
@@ -137,9 +141,17 @@ l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récap
 - **GSAP n'anime que ses propres calques** (`.feutres`, `.tirage`), jamais un élément déjà animé
   en CSS : les deux se disputeraient les mêmes propriétés. Chaque calque GSAP a un filet
   `setTimeout` qui le retire : GSAP se fige quand l'onglet est masqué.
-- **Une seule transition à la fois.** Les transitions d'écran (View Transitions) ne jouent pas
-  quand une entrée maison le fait déjà (`choregraphie()`). Pendant une transition, le rendu est
-  asynchrone : ne pas lire l'écran juste après `render()`.
+- **Une seule transition à la fois.** Le volet et le fondu de `render()` ne jouent pas quand une
+  entrée maison le fait déjà (`choregraphie()`, à évaluer *avant* de dessiner). Les View
+  Transitions natives ont été essayées puis retirées le 24/09/2026 : photographier l'écran prenait
+  près d'une seconde (fond tramé, ombres), le rendu devenait asynchrone — décisions prises sur des
+  repères périmés — et l'ancien écran transparaissait à travers le nouveau.
+- **Un calque opaque plein écran entre d'un coup** (`0% { opacity: 1 }`), sans fondu : la scène
+  est masquée dès le premier instant, un fondu laisse voir le fond vide — c'est le « flash ».
+- **Points gagnés ou perdus** : `volant` posé par l'action, joué par `pointsVolants()` après le
+  rendu (animation CSS, marche sans `lib/`).
+- **En `file://`, pas de `url(#id)` dans une feuille de style** : Chrome le bloque (« Unsafe attempt
+  to load URL »). Le poser en attribut SVG (`fill="url(#hg)"`).
 - **L'auto-test coupe le son, les animations GSAP et les transitions** (`AUTOTEST`). Il ne les
   vérifie donc pas : les écouter et les regarder à la main, dans une fenêtre au premier plan.
 - **Les scores ne sont jamais stockés**, ils se recalculent depuis les cases cochées. Un compteur
@@ -205,7 +217,8 @@ l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récap
   moteur. En plus, un bouton pour exporter une version autonome (un seul HTML avec le pack
   embarqué), pour le jour J ou pour l'envoyer à quelqu'un.
 - **Les manches deviennent des modules dès la phase 2**, pour pouvoir en ajouter.
-- **Contenu au neutre**, sans champ de pronom par personne.
+- ~~Contenu au neutre~~ — revu le jour même : le neutre cassait le lien entre la question et les
+  options (« Te la tend »). Remplacé par un réglage il/elle par personne et des accords `{il/elle}`.
 - Dépôt privé `ChipsAKALudo/zamours-and-go`.
 
 ## Reste à faire

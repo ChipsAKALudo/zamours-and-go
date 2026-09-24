@@ -1115,7 +1115,7 @@
   }
 
   @keyframes annFade {
-    0%   { opacity: 0; }
+    0%   { opacity: 1; }
     8%   { opacity: 1; }
     76%  { opacity: 1; }
     100% { opacity: 0; }
@@ -1336,7 +1336,7 @@
   }
 
   @keyframes hbFade {
-    0%   { opacity: 0; }
+    0%   { opacity: 1; }
     7%   { opacity: 1; }
     82%  { opacity: 1; }
     100% { opacity: 0; }
@@ -1463,7 +1463,7 @@
   }
 
   @keyframes flFade {
-    0%   { opacity: 0; }
+    0%   { opacity: 1; }
     10%  { opacity: 1; }
     72%  { opacity: 1; }
     100% { opacity: 0; }
@@ -1565,8 +1565,8 @@
     display: grid;
     place-items: center;
     pointer-events: none;
-    background: rgba(12,30,55,.55);
-    animation: spoFade 2.6s ease forwards;
+    background: rgba(12,30,55,.86);   /* la question ne se lit pas avant la fin du gag */
+    animation: spoFade 4.6s ease forwards;
   }
 
   @keyframes spoFade {
@@ -1603,13 +1603,30 @@
   }
 
   .sponsor .sp-by {
+    position: relative;
+    display: inline-block;
     font-family: var(--heavy);
-    font-size: clamp(22px, min(3.2vw, 5vh), 50px);
-    line-height: 1.12;
+    font-size: clamp(30px, min(5vw, 8.5vh), 104px);
+    line-height: 1.08;
     color: var(--rose-dim);
     text-wrap: balance;
     animation: spoBy .5s .28s cubic-bezier(.2,.7,.3,1) both;
   }
+  /* le nom du sponsor, lettre par lettre (GSAP) ; les mots restent insécables */
+  .sponsor .sp-mot { display: inline-block; white-space: nowrap; }
+  .sponsor .sp-l { display: inline-block; }
+  .sponsor .sp-surligne {
+    position: absolute; left: -.1em; right: -.1em; bottom: .08em; height: .42em;
+    background: var(--yellow); z-index: -1; transform-origin: left center;
+  }
+  .sponsor .sp-card { position: relative; isolation: isolate; }
+  .sponsor .sp-etoile {
+    position: absolute; left: 50%; top: 55%;
+    font-size: clamp(22px, 4vh, 48px); color: var(--yellow);
+    -webkit-text-stroke: 2px var(--ink); opacity: 0; pointer-events: none;
+  }
+  /* quand GSAP pilote le gag, les animations CSS de secours se taisent */
+  .sponsor.gsap, .sponsor.gsap * { animation: none !important; }
 
   @keyframes spoBy {
     from { opacity: 0; transform: translateY(12px); }
@@ -1647,7 +1664,7 @@
   }
 
   @keyframes spFade {
-    0%   { opacity: 0; }
+    0%   { opacity: 1; }
     6%   { opacity: 1; }
     82%  { opacity: 1; }
     100% { opacity: 0; }
@@ -1691,7 +1708,9 @@
     filter: drop-shadow(0 14px 26px rgba(20,50,90,.32));
   }
   .splash .sp-heart .hk { fill: none; stroke: #fff; stroke-width: 13; stroke-linejoin: round; }
-  .splash .sp-heart .hf { fill: url(#hg); stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
+  /* le dégradé (fill="url(#hg)") est posé en attribut sur le <path> : en CSS, ouvert en double-clic,
+     Chrome le bloque (« Unsafe attempt to load URL ») et le cœur perd sa couleur */
+  .splash .sp-heart .hf { stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
   .splash .sp-heart .hg2 { fill: rgba(255,255,255,.42); }
 
   .splash .sp-n {
@@ -1749,29 +1768,43 @@
   /* après un splash, la scène apparaît plus tard qu'après une simple annonce */
   .stage.enter-late { animation: stageIn .7s 1.55s cubic-bezier(.2,.7,.3,1) both; }
 
-  /* ---------- transitions entre écrans (View Transitions, cf. render()) ----------
-     Barres du haut et du bas : restent en place, leur texte change en fondu.
-     Changement d'écran : l'ancien et le nouveau sont découpés par le MÊME bord
-     diagonal, en miroir — le nouveau à droite du bord, l'ancien à gauche. La
-     scène n'a pas de fond : sans ce découpage, l'ancien écran transparaissait
-     à travers les vides du nouveau. Même durée, même courbe, sinon ils se
-     décalent. Même écran, question suivante : fondu croisé du navigateur. */
-  #rail-top    { view-transition-name: vt-haut; }
-  #rail-bottom { view-transition-name: vt-bas; }
-  #stage       { view-transition-name: vt-scene; }
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-  ::view-transition-group(vt-haut), ::view-transition-group(vt-bas) { animation-duration: .6s; }
-  html[data-vt="ecran"]::view-transition-old(vt-scene) { animation: vtVoletAncien .8s cubic-bezier(.65, 0, .25, 1) both; }
-  html[data-vt="ecran"]::view-transition-new(vt-scene) { animation: vtVoletNouveau .8s cubic-bezier(.65, 0, .25, 1) both; }
-  @keyframes vtVoletNouveau {
+  /* ---------- changement d'écran sans entrée maison (cf. render()) ----------
+     Le nouvel écran entre en volet diagonal, comme une case de BD qu'on tourne.
+     Même écran, question suivante : fondu court. Dessiné tout de suite : pas de
+     photographie de l'écran comme avec les View Transitions, qui mettaient près
+     d'une seconde à démarrer et laissaient transparaître l'ancien écran. */
+  .stage.enter-volet { animation: stageVolet .6s cubic-bezier(.65, 0, .25, 1) both; }
+  @keyframes stageVolet {
     from { clip-path: polygon(115% 0, 140% 0, 140% 100%, 100% 100%); }
     to   { clip-path: polygon(-30% 0, 140% 0, 140% 100%, -45% 100%); }
   }
-  @keyframes vtVoletAncien {
-    from { clip-path: polygon(-50% 0, 115% 0, 100% 100%, -50% 100%); filter: brightness(1); }
-    to   { clip-path: polygon(-50% 0, -30% 0, -45% 100%, -50% 100%); filter: brightness(.75); }
+  .stage.enter-fondu { animation: stageIn .35s cubic-bezier(.2, .7, .3, 1) both; }
+
+  /* ---------- points gagnés / perdus, au clic sur une pastille ---------- */
+  .points-volants {
+    position: fixed; z-index: 60; pointer-events: none;
+    font-family: var(--display);
+    font-size: clamp(30px, 6.5vh, 80px);
+    color: var(--yellow);
+    -webkit-text-stroke: 3px var(--ink);
+    paint-order: stroke fill;
+    text-shadow: 4px 4px 0 var(--ink);
+    transform: translate(-50%, -50%);
+    animation: ptsGain 1.2s cubic-bezier(.2, .8, .3, 1) forwards;
   }
-  html[data-vt="question"]::view-transition-group(vt-scene) { animation-duration: .45s; }
+  .points-volants.perte { color: var(--rose); animation-name: ptsPerte; }
+  @keyframes ptsGain {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-10deg); }
+    20%  { opacity: 1; transform: translate(-50%, -120%) scale(1.35) rotate(-4deg); }
+    60%  { opacity: 1; transform: translate(-50%, -160%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -240%) scale(.9); }
+  }
+  @keyframes ptsPerte {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(8deg); }
+    20%  { opacity: 1; transform: translate(-50%, -60%) scale(1.3) rotate(4deg); }
+    60%  { opacity: 1; transform: translate(-50%, 0%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, 90%) scale(.9); }
+  }
 
   /* ---------- « Feutres en l'air ! » (fin du chrono, GSAP) ---------- */
   .feutres {
@@ -1929,8 +1962,8 @@ const PACK_DEFAUT = {
       "q": "Les conditions de traitement des données du questionnaire d'inscription à Z'amours and Go : est-ce que … les a lues ?",
       "note": "",
       "opts": [
-        "Tout, ligne par ligne. Avec surligneur.",
-        "Clic sur « J'accepte », âme vendue à l'entreprise."
+        "{Il/Elle} a tout lu, ligne par ligne, comme un contrat de mariage.",
+        "{Il/Elle} a cliqué sur « J'accepte » et vendu son âme à l'entreprise."
       ],
       "sponsor": null
     },
@@ -2059,8 +2092,8 @@ const PACK_DEFAUT = {
           "q": "Il reste UNE part de gâteau dans la cuisine du bureau, sans nom dessus. Que fait … ?",
           "opts": [
             "Elle a déjà disparu. Personne n'a rien vu.",
-            "Tourne autour toute la journée, puis la prend à 17h en disant « bon, sinon elle va se perdre ».",
-            "N'y touche pas — mais en parle à trois personnes."
+            "{Il/Elle} tourne autour toute la journée, et la prend à 17h en disant « bon, sinon elle va se perdre ».",
+            "{Il/Elle} n'y touche pas — mais {il/elle} en parle à trois personnes."
           ],
           "sponsor": null
         }
@@ -2246,7 +2279,7 @@ const PACK_DEFAUT = {
           "sponsor": null
         },
         {
-          "q": "Quel super-pouvoir fait rêver … ?",
+          "q": "Quel super-pouvoir … aimerait-{il/elle} avoir ?",
           "opts": [],
           "sponsor": null
         },
@@ -2289,27 +2322,27 @@ const PACK_DEFAUT = {
         {
           "q": "Une publicité pour un club BDSM tombe de la poche de …",
           "opts": [
-            "Explique en panique que c'est un tract reçu dans la rue, faute d'avoir su dire non.",
-            "La remet dans sa poche le plus naturellement du monde.",
-            "Te la tend : « je l'ai vue, j'ai pensé à toi »."
+            "{Il/Elle} essaie d'expliquer en panique que c'est un tract qu'on lui a donné dans la rue, et qu'{il/elle} n'a pas réussi à dire non.",
+            "{Il/Elle} la remet dans sa poche le plus naturellement du monde.",
+            "{Il/Elle} te la tend en disant qu'{il/elle} l'a vue et qu'{il/elle} a pensé à toi."
           ],
           "sponsor": null
         },
         {
           "q": "Il est 17h55 un vendredi. Une erreur 500 critique apparaît sur la prod d'EvalandGo. Que fait … ?",
           "opts": [
-            "Accuse immédiatement Steven ou le client d'exagérer, et part se cacher aux toilettes jusqu'à 18h.",
-            "Enfile sa cape et vole au secours de l'application et de ses clients, quitte à partir à 19h et laisser les enfants rentrer seuls.",
-            "Passe Google Chat en « occupé », enfile son manteau et file avant que l'info se propage : « ça, c'est un problème pour le moi de lundi 🙂 »."
+            "{Il/Elle} accuse immédiatement Steven ou le client d'exagérer, et part se cacher dans les toilettes jusqu'à 18h.",
+            "{Il/Elle} enfile sa cape et part à la rescousse de l'application et de ses clients, quitte à partir à 19h et laisser ses enfants rentrer seuls.",
+            "{Il/Elle} passe Google Chat en « occupé », met son manteau et part vite fait avant que l'info se propage : « ça, c'est un problème pour le moi de lundi 🙂 »."
           ],
           "sponsor": null
         },
         {
           "q": "En plein afterwork, le serveur trébuche et renverse une pinte de bière et une planche de jambon sur ….",
           "opts": [
-            "Rit très fort pendant 5 minutes. Ça va devenir le moment préféré de sa LIFE.",
-            "Le déni : reste toute la soirée dans son jus comme si de rien n'était. C'est le pire moment de sa LIFE.",
-            "Le scandale : exige de parler au manager et négocie le repas gratuit pour toute la table. C'est le moment préféré de sa LIFE++."
+            "{Il/Elle} rit très fort pendant 5 minutes. Ça va devenir le moment préféré de sa LIFE.",
+            "Le déni : {il/elle} reste {assis/assise} toute la soirée dans son jus comme si de rien n'était. C'est le pire moment de sa LIFE.",
+            "Le scandale : {il/elle} exige de parler au manager et négocie le repas gratuit pour toute la table. C'est le moment préféré de sa LIFE++."
           ],
           "sponsor": null
         },
@@ -2318,43 +2351,43 @@ const PACK_DEFAUT = {
           "opts": [
             "Second mail immédiat : « désolé, [correction] » — et aggrave le carnage.",
             "Rien. Silence total. Si personne n'en parle, ça n'a jamais existé.",
-            "En fait une blague avant que quelqu'un d'autre s'en charge. Attaque préventive."
+            "{Il/Elle} en fait une blague avant que quelqu'un d'autre le fasse. Attaque préventive."
           ],
           "sponsor": null
         },
         {
-          "q": "On est en plein Z'amours and Go. On vient de révéler que … a tout faux sur son partenaire.",
+          "q": "On est en plein Z'amours and Go. On vient de révéler que … s'est complètement {planté/plantée} sur son partenaire.",
           "opts": [
             "Mauvaise foi absolue : « non mais attends, c'est FAUX ça. »",
-            "S'excuse platement, avec une émotion sincère.",
-            "Retourne la faute : « ouais bah tu me l'as jamais dit non plus. »"
+            "{Il/Elle} s'excuse platement, sincèrement {touché/touchée} d'avoir eu faux.",
+            "{Il/Elle} retourne la faute : « ouais bah tu me l'as jamais dit non plus. »"
           ],
           "sponsor": null
         },
         {
           "q": "La réunion devait finir à 12h30. Le client lance « juste une dernière petite question ». Que fait … ?",
           "opts": [
-            "Répond consciencieusement et sort à 13h15, le ventre vide et l'âme morte.",
-            "Range ses affaires très bruyamment, tout en hochant la tête, très à l'écoute.",
-            "« Excellente question, je te fais un retour par mail cet aprem. » Dehors à 12h31."
+            "{Il/Elle} répond consciencieusement et sort à 13h15, le ventre vide et l'âme morte.",
+            "{Il/Elle} range ses affaires très bruyamment tout en soutenant du regard qu'{il/elle} écoute.",
+            "« Excellente question, je te fais un retour par mail cet aprem. » {Il/Elle} est dehors à 12h31."
           ],
           "sponsor": null
         },
         {
-          "q": "… est en visio, micro soi-disant coupé. Il ne l'est pas.",
+          "q": "… est en visio. {Il/Elle} croit son micro coupé. Il ne l'est pas.",
           "opts": [
-            "Continue de parler pendant 30 secondes avant que quelqu'un ose l'interrompre.",
-            "Coupe net, quitte la réunion, revient dix secondes plus tard en accusant sa connexion.",
-            "Assume totalement : « bah oui, je le pense aussi à voix haute. »"
+            "{Il/Elle} continue de parler pendant 30 secondes avant que quelqu'un ose l'interrompre.",
+            "{Il/Elle} coupe net, quitte la réunion, revient dix secondes plus tard en accusant sa connexion.",
+            "{Il/Elle} assume totalement : « bah oui, je le pense aussi à voix haute. »"
           ],
           "sponsor": null
         },
         {
-          "q": "Il est 19h30. Plus personne au bureau, sauf …",
+          "q": "Il est 19h30. … est {le dernier/la dernière} au bureau.",
           "opts": [
-            "Éteint tout, ferme à clé et part sans un bruit. Personne ne saura jamais.",
-            "Met la musique à fond et enchaîne 40 minutes de plus. Meilleur moment de sa semaine.",
-            "Poste un message dans le chat d'équipe pour que ça se sache bien."
+            "{Il/Elle} éteint tout, ferme derrière {lui/elle} et part sans un bruit. Personne ne saura jamais.",
+            "{Il/Elle} met la musique à fond et enchaîne 40 minutes de plus. C'est son meilleur moment de la semaine.",
+            "{Il/Elle} poste un message dans le chat d'équipe pour que ça se sache bien."
           ],
           "sponsor": null
         }
@@ -2568,6 +2601,7 @@ function normaliserPack(pk) {
     reglages: Object.assign({ m2Tours: 3, m3Coeurs: 3, chrono: 20 }, pk.reglages || {}),
     duos: (pk.duos || []).map((d, i) => ({
       id: idSur(d.id, "d" + i), a: String(d.a || ""), b: String(d.b || ""),
+      pa: ["il", "elle"].includes(d.pa) ? d.pa : "", pb: ["il", "elle"].includes(d.pb) ? d.pb : "",
       joker: Object.assign({ gag: "", q: "", opts: [] }, q(d.joker || {}), { gag: String((d.joker || {}).gag || "") })
     })),
     manche1: (pk.manche1 || []).map(x => Object.assign(q(x), {
@@ -2623,6 +2657,24 @@ function cibleSide(d, i) {
 }
 
 function cibleName(d, i) { return cibleSide(d, i) === "a" ? d.a : d.b; }
+function pronomDe(d, i) { return cibleSide(d, i) === "a" ? d.pa : d.pb; }
+
+// « {il/elle} », « {touché/touchée} », « {le dernier/la dernière} » : la forme
+// suit la personne ciblée (réglage il/elle de chaque personne, onglet Duos).
+// Sans personne connue — la Manche 1 s'adresse à tous les duos à la fois — ou
+// sans réglage : les deux formes, « il/elle ». Exception : un il/elle sujet
+// d'une personne connue mais sans réglage prend son prénom (« Flo la remet »).
+const ACCORD = /\{([^{}\/]*)\/([^{}\/]*)\}/g;
+
+function accorder(t, pronom, nom) {
+  return String(t).replace(ACCORD, (m, masc, fem, pos, texte) => {
+    if (pronom === "il") return masc;
+    if (pronom === "elle") return fem;
+    // le prénom ne remplace pas un il/elle collé : « aimerait-Flo », « qu'Flo »
+    if (nom && /^il$/i.test(masc.trim()) && !/['’-]/.test(texte[pos - 1] || "")) return nom;
+    return masc + "/" + fem;
+  });
+}
 function devineurName(d, i) { return cibleSide(d, i) === "a" ? d.b : d.a; }
 
 // « … » désigne la cible. En Manche 2 un seul duo joue : on écrit son prénom
@@ -2633,9 +2685,9 @@ function devineurName(d, i) { return cibleSide(d, i) === "a" ? d.b : d.a; }
 // tape pas sur un clavier Windows.
 const REPERE = /\.\.\.|…/;
 
-function qText(t, name) {
+function qText(t, name, pronom) {
   const marque = name ? esc(name) : "…";
-  return esc(t).split(REPERE).join(`<span class="ph">${marque}</span>`);
+  return esc(accorder(t, pronom, name)).split(REPERE).join(`<span class="ph">${marque}</span>`);
 }
 
 // bandeau des rôles, affiché juste sous la question
@@ -2925,6 +2977,12 @@ const Son = (() => {
       while (x < duree - .15) { i.bois.triggerAttackRelease(x % .3 < .15 ? "C4" : "D4", "32n", t + x); x += dt; dt = Math.max(.045, dt * .9); }
       i.cloche.triggerAttackRelease(["C6", "E6"], "8n", t + duree);
     }),
+    // gag du sponsor : jingle télé, puis tintement sur le nom
+    sponsor: () => joue((i, t) => {
+      ["G4", "C5", "E5", "G5"].forEach((n, k) => i.cloche.triggerAttackRelease(n, "16n", t + k * .09));
+      i.grosse.triggerAttackRelease("C2", "8n", t + .8);
+      i.cloche.triggerAttackRelease(["E6", "G6", "C7"], "4n", t + 1.35);
+    }),
     // victoire : arpège, puis accord
     victoire: () => joue((i, t) => {
       ["C5", "E5", "G5", "C6"].forEach((n, k) => i.cloche.triggerAttackRelease(n, "16n", t + k * .11));
@@ -2983,7 +3041,7 @@ function playTirage(label) {
   Son.tirage(TIRAGE_MS / 1000 - .35);
 
   const stage = document.getElementById("stage");
-  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break");
+  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break", "enter-volet", "enter-fondu");
   void stage.offsetWidth;
   stage.classList.add("enter-late");
 
@@ -3019,13 +3077,11 @@ function montrerBarres() {
 }
 document.addEventListener("mousemove", montrerBarres);
 
-/* --- Transitions entre écrans (View Transitions, natif) ---
-   Le navigateur photographie l'écran avant et après le rendu, puis anime le
-   passage (CSS : ::view-transition-*). Seulement quand l'écran ou la question
-   change, et jamais par-dessus une entrée maison (choregraphie()) : une seule
-   transition à la fois. Sans support, ou « animations réduites » : changement
-   immédiat. ⚠ Pendant une transition, le rendu est asynchrone : ne pas lire
-   l'écran juste après render() (l'auto-test coupe les transitions pour ça). */
+/* --- Changement d'écran ---
+   Quand l'écran ou la question change et qu'aucune entrée maison ne joue
+   (choregraphie()), la nouvelle scène entre en volet (autre écran) ou en
+   fondu (même écran). Une seule animation à la fois. Rendu toujours
+   synchrone : on peut lire l'écran juste après render(). */
 let cleVue = null, ecranVue = null;
 
 function choregraphie() {
@@ -3038,16 +3094,13 @@ function choregraphie() {
 function render() {
   const cle = S.screen + "|" + (cleQuestion() || "");
   const change = cleVue !== null && cle !== cleVue;
-  const genre = S.screen === ecranVue ? "question" : "ecran";
+  const genre = S.screen === ecranVue ? "enter-fondu" : "enter-volet";
   cleVue = cle; ecranVue = S.screen;
-  if (!change || choregraphie() || !document.startViewTransition || AUTOTEST || mouvementReduit()) return dessiner();
-  document.documentElement.dataset.vt = genre;
-  // Une transition sautée (clics rapides, onglet caché) rejette « ready » ;
-  // l'écran est quand même dessiné, ce n'est pas une erreur.
-  document.startViewTransition(dessiner).ready.catch(() => {});
+  // à décider AVANT de dessiner : le dessin met à jour les repères de choregraphie()
+  dessiner(change && !choregraphie() && !AUTOTEST ? genre : null);
 }
 
-function dessiner() {
+function dessiner(entree) {
   const top = document.getElementById("rail-top");
   const stage = document.getElementById("stage");
   const bot = document.getElementById("rail-bottom");
@@ -3058,6 +3111,11 @@ function dessiner() {
   bot.innerHTML = fns.bottom ? fns.bottom() : "";
   document.getElementById("panel").innerHTML = panelHTML();
   document.getElementById("panel").classList.toggle("open", !!S.panel);
+  if (entree) {
+    stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break", "enter-volet", "enter-fondu");
+    void stage.offsetWidth;   // redémarre l'animation
+    stage.classList.add(entree);
+  }
   bindAll();
   paintTimer();
   save();
@@ -3121,6 +3179,7 @@ function delaiScene() {
   if (st.classList.contains("enter-break")) return 1150;
   if (st.classList.contains("enter")) return 950;
   if (st.classList.contains("enter-fast")) return 500;
+  if (st.classList.contains("enter-volet")) return 350;
   return 0;
 }
 
@@ -3321,7 +3380,7 @@ function playHeartBreak(perdants) {
   hbreakTimer = setTimeout(() => n.remove(), HBREAK_MS);
 
   const stage = document.getElementById("stage");
-  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break");
+  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-break", "enter-volet", "enter-fondu");
   void stage.offsetWidth;
   stage.classList.add("enter-break");
 }
@@ -3386,14 +3445,14 @@ function playFlash() {
   flashTimer = setTimeout(() => n.remove(), FLASH_MS);
 
   const stage = document.getElementById("stage");
-  stage.classList.remove("enter", "enter-late", "enter-fast");
+  stage.classList.remove("enter", "enter-late", "enter-fast", "enter-volet", "enter-fondu");
   void stage.offsetWidth;
   stage.classList.add("enter-fast");
 }
 
 /* ---------- bandeau sponsor (gag TV avant certaines questions) ---------- */
 
-const SPONSOR_MS = 2600;
+const SPONSOR_MS = 4800;
 let sponsorKey = null;
 let sponsorTimer = null;
 
@@ -3427,18 +3486,46 @@ function maybeSponsor(delay) {
   else playSponsor(sp);
 }
 
+// Gag télé : la carte tombe, le nom du sponsor jaillit lettre par lettre sur
+// un surligneur, se dandine sous les étoiles, la mention légale arrive, et
+// tout s'envole. Sans GSAP : les animations CSS de secours, plus sobres.
 function playSponsor(sp) {
   document.querySelectorAll(".sponsor").forEach(n => n.remove());
   clearTimeout(sponsorTimer);
+  const lettres = sp.by.trim().split(/\s+/)
+    .map(mot => `<span class="sp-mot">${[...mot].map(c => `<span class="sp-l">${esc(c)}</span>`).join("")}</span>`).join(" ");
   const n = el(`<div class="sponsor" aria-hidden="true">
       <div class="sp-card">
         <div class="sp-pre">Cette question vous est présentée par</div>
-        <div class="sp-by">${esc(sp.by)}</div>
+        <div class="sp-by"><span class="sp-surligne"></span>${lettres}</div>
         <div class="sp-fine">${esc(sp.fine)}</div>
+        ${"<span class=\"sp-etoile\">✦</span>".repeat(8)}
       </div>
     </div>`);
   document.body.appendChild(n);
   sponsorTimer = setTimeout(() => n.remove(), SPONSOR_MS);
+  Son.sponsor();
+  if (!avecGsap()) return;
+
+  n.classList.add("gsap");
+  const q = sel => n.querySelectorAll(sel);
+  G.timeline({ onComplete: () => n.remove() })
+    .fromTo(n, { opacity: 0 }, { opacity: 1, duration: .18 })
+    .fromTo(q(".sp-card"), { y: "-70vh", rotation: -9 }, { y: 0, rotation: -1.5, duration: .6, ease: "back.out(1.5)" }, 0)
+    .fromTo(q(".sp-pre"), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .3 }, .45)
+    .fromTo(q(".sp-l"), { opacity: 0, scale: 0, y: -50, rotation: () => G.utils.random(-40, 40) },
+                        { opacity: 1, scale: 1, y: 0, rotation: 0, duration: .45, ease: "back.out(3)", stagger: { amount: .7 } }, .8)   // .7 s au total, quelle que soit la longueur du nom
+    .fromTo(q(".sp-surligne"), { scaleX: 0 }, { scaleX: 1, duration: .45, ease: "power2.out" }, ">-.25")
+    // le nom se dandine, les étoiles fusent tout autour
+    .to(q(".sp-by"), { rotation: 2.5, scale: 1.06, duration: .12, yoyo: true, repeat: 5, ease: "sine.inOut" }, ">")
+    .fromTo(q(".sp-etoile"), { opacity: 1, x: 0, y: 0, scale: .4 },
+            { opacity: 0, scale: 1.4, duration: .9, ease: "power2.out", stagger: .03,
+              x: k => Math.cos(k / 8 * Math.PI * 2) * G.utils.random(160, 260),
+              y: k => Math.sin(k / 8 * Math.PI * 2) * G.utils.random(90, 150) }, "<")
+    .fromTo(q(".sp-fine"), { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .3, ease: "power2.out" }, "<+.3")
+    // on laisse lire, puis tout s'envole
+    .to(q(".sp-card"), { y: "-80vh", rotation: 6, duration: .45, ease: "back.in(1.4)" }, "+=1.25")
+    .to(n, { opacity: 0, duration: .3 }, "<+.15");
 }
 
 /* ---------- splash d'ouverture de manche ---------- */
@@ -3487,7 +3574,7 @@ function playSplash(m) {
               </linearGradient>
             </defs>
             <path class="hk" d="${HEART}"/>
-            <path class="hf" d="${HEART}"/>
+            <path class="hf" fill="url(#hg)" d="${HEART}"/>
             <ellipse class="hg2" cx="30" cy="26" rx="15" ry="10" transform="rotate(-32 30 26)"/>
           </svg>
           <span class="sp-n">${m.n}</span>
@@ -3500,7 +3587,7 @@ function playSplash(m) {
   splashTimer = setTimeout(() => n.remove(), SPLASH_MS);
 
   const stage = document.getElementById("stage");
-  stage.classList.remove("enter", "enter-late");
+  stage.classList.remove("enter", "enter-late", "enter-volet", "enter-fondu");
   void stage.offsetWidth;
   stage.classList.add("enter-late");
 }
@@ -3646,7 +3733,7 @@ function playAnnounce() {
   announceTimer = setTimeout(() => n.remove(), ANNOUNCE_MS);
 
   const stage = document.getElementById("stage");
-  stage.classList.remove("enter", "enter-late");
+  stage.classList.remove("enter", "enter-late", "enter-volet", "enter-fondu");
   void stage.offsetWidth;            // force le redémarrage de l'animation
   stage.classList.add("enter");
 }
@@ -4062,9 +4149,9 @@ SCREENS.m2 = {
         ${plateau(montreGag ? `
           <h1 class="question is-gag ${qCls(j.gag)}"><span class="qtxt">${esc(j.gag)}</span><i class="strike"></i></h1>`
         : `
-          <h1 class="question ${qCls(j.q)}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step))}</span></h1>
+          <h1 class="question ${qCls(j.q)}"><span class="qtxt">${qText(j.q, cibleName(d, S.m2step), pronomDe(d, S.m2step))}</span></h1>
           ${rolesBand(d, S.m2step, qcm)}`, `
-          ${qcm && !montreGag ? qcmBlock(j.opts) : ""}
+          ${qcm && !montreGag ? qcmBlock(j.opts, pronomDe(d, S.m2step), cibleName(d, S.m2step)) : ""}
           ${timerBlock(quiEcritM2(d))}`)}
         ${awardRow(key + "-j", 3)}`;
     }
@@ -4097,9 +4184,9 @@ SCREENS.m2 = {
       <div class="kicker"><span class="tag">${esc(cat.label)}</span><span>2 points</span>
         ${opts ? '<span style="color:var(--muted)">QCM — les DEUX doivent choisir la même lettre</span>' : ""}</div>
       ${plateau(`
-        <h1 class="question ${qCls(qtext)}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step))}</span></h1>
+        <h1 class="question ${qCls(qtext)}"><span class="qtxt">${qText(qtext, cibleName(d, S.m2step), pronomDe(d, S.m2step))}</span></h1>
         ${rolesBand(d, S.m2step, !!opts)}`, `
-        ${opts ? qcmBlock(opts) : ""}
+        ${opts ? qcmBlock(opts, pronomDe(d, S.m2step), cibleName(d, S.m2step)) : ""}
         ${timerBlock(quiEcritM2(d))}`)}
       ${awardRow(roundKey, 2)}`;
   },
@@ -4132,7 +4219,8 @@ function optsAffichees() {
   return (item && item.opts) || [];
 }
 
-function qcmBlock(opts) {
+// pronom et nom : ceux de la personne ciblée, pour accorder les options (cf. accorder())
+function qcmBlock(opts, pronom, nom) {
   // R s'arrête à la dernière option (Maj+R en retire une) : un appui de trop
   // remasquait tout, devant la salle
   const shown = Math.min(S.revealCount || 0, opts.length);
@@ -4142,7 +4230,7 @@ function qcmBlock(opts) {
   // salle voit combien il y en a, et rien ne saute quand on les révèle
   const longues = opts.join("").length > 280 ? " longues" : "";
   return `<div class="options${longues}">${opts.map((o, i) => i < shown
-    ? `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABCDEF"[i]}</span><span>${esc(o)}</span></div>`
+    ? `<div class="option${pop && i === shown - 1 ? " pop" : ""}"><span class="letter">${"ABCDEF"[i]}</span><span>${esc(accorder(o, pronom, nom))}</span></div>`
     : `<div class="option vide"><span class="letter">${"ABCDEF"[i]}</span><span></span></div>`).join("")}</div>`;
 }
 
@@ -4363,7 +4451,9 @@ function act(a, data) {
 
     case "m1mark": {
       const m = S.m1marks[S.m1i] || (S.m1marks[S.m1i] = {});
-      if (m[data.id]) delete m[data.id]; else { m[data.id] = 1; Son.match(); }
+      const pts = M1[S.m1i].pts;
+      if (m[data.id]) { delete m[data.id]; volant = { act: "m1mark", id: data.id, texte: "−" + pts, gain: false }; }
+      else { m[data.id] = 1; Son.match(); volant = { act: "m1mark", id: data.id, texte: "+" + pts, gain: true }; }
       break;
     }
     case "m1next":
@@ -4468,7 +4558,8 @@ function act(a, data) {
       break;
     }
     case "m2mark":
-      if (S.m2marks[data.key]) delete S.m2marks[data.key]; else { S.m2marks[data.key] = 1; Son.match(); }
+      if (S.m2marks[data.key]) { delete S.m2marks[data.key]; volant = { act: "m2mark", key: data.key, texte: "−" + data.pts, gain: false }; }
+      else { S.m2marks[data.key] = 1; Son.match(); volant = { act: "m2mark", key: data.key, texte: "+" + data.pts, gain: true }; }
       break;
     case "m2next":
       resetTimer(); S.revealCount = 0;
@@ -4498,7 +4589,8 @@ function act(a, data) {
       break;
     case "m3mark": {
       const k = S.m3i + "|" + data.id;
-      if (S.m3marks[k]) delete S.m3marks[k]; else { S.m3marks[k] = 1; Son.coeur(); }
+      if (S.m3marks[k]) { delete S.m3marks[k]; volant = { act: "m3mark", id: data.id, texte: "+1 ♥", gain: true }; }
+      else { S.m3marks[k] = 1; Son.coeur(); volant = { act: "m3mark", id: data.id, texte: "−1 ♥", gain: false }; }
       break;
     }
     case "m3next":
@@ -4536,6 +4628,26 @@ function act(a, data) {
     }
   }
   render();
+  // points gagnés ou perdus : ils jaillissent de la pastille qu'on vient de cliquer
+  if (volant) {
+    const v = volant;
+    volant = null;
+    pointsVolants(document.querySelector(`[data-act="${v.act}"]${v.id ? `[data-id="${v.id}"]` : `[data-key="${v.key}"]`}`), v.texte, v.gain);
+  }
+}
+
+// « +2 » qui monte (jaune) ou « −2 » qui retombe (rose), depuis une pastille.
+// Animation CSS : fonctionne aussi sans lib/.
+let volant = null;
+
+function pointsVolants(pastille, texte, gain) {
+  if (!pastille || AUTOTEST) return;
+  const r = pastille.getBoundingClientRect();
+  const n = el(`<div class="points-volants ${gain ? "gain" : "perte"}" aria-hidden="true">${esc(texte)}</div>`);
+  n.style.left = (r.left + r.width / 2) + "px";
+  n.style.top = r.top + "px";
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 1300);
 }
 
 /* ============================ CLAVIER ============================ */
@@ -4681,6 +4793,10 @@ function ongletDuos() {
         ${champ("Prénom 1", `duos.${i}.a`, d.a)}
         ${champ("Prénom 2", `duos.${i}.b`, d.b)}
       </div>
+      <div class="ed-row2">
+        ${choixPronom(`${d.a || "Prénom 1"} : il ou elle ?`, `duos.${i}.pa`, d.pa)}
+        ${choixPronom(`${d.b || "Prénom 2"} : il ou elle ?`, `duos.${i}.pb`, d.pb)}
+      </div>
       <div class="ed-sub">Joker — la question sur mesure de ce duo, 3 points</div>
       ${champ("Faux départ (barré à l'écran, facultatif)", `duos.${i}.joker.gag`, d.joker.gag)}
       ${zone("Question du Joker", `duos.${i}.joker.q`, d.joker.q, 2)}
@@ -4691,8 +4807,20 @@ function ongletDuos() {
 
 // Le même texte sert pour toutes les personnes : il s'écrit au neutre.
 const AIDE_QUESTION = `Tape trois points « ... » là où doit apparaître le prénom de la personne concernée :
-  « Quel est le plat préféré de ... ? ». Évite donc « ... » ailleurs dans la question.
-  Écris au neutre, la même question sert pour tout le monde : « en rentrant du boulot » plutôt que « quand il rentre ».`;
+  « Quel est le plat préféré de ... ? ». Évite donc « ... » ailleurs dans la question.<br>
+  Pour accorder, écris les deux formes entre accolades : « {Il/Elle} range ses affaires », « {le dernier/la dernière} ».
+  Le jeu choisit selon la personne (réglage il/elle dans l'onglet Duos). En Manche 1, qui s'adresse
+  à tous les duos à la fois, les deux formes s'affichent (« Il/Elle »).`;
+
+// il / elle d'une personne : sert à accorder les questions (cf. accorder())
+function choixPronom(label, chemin, valeur) {
+  return `<label class="ed-f"><span>${esc(label)}</span>
+    <select data-path="${esc(chemin)}">
+      <option value="" ${!valeur ? "selected" : ""}>— à préciser —</option>
+      <option value="il" ${valeur === "il" ? "selected" : ""}>il</option>
+      <option value="elle" ${valeur === "elle" ? "selected" : ""}>elle</option>
+    </select></label>`;
+}
 
 function ongletM1() {
   return `<div class="ed-hint">${AIDE_QUESTION}</div>
@@ -4869,7 +4997,7 @@ function actionEditeur(d) {
   if (d.op.startsWith("del") && d.op !== "delopt" && !confirme("ed-" + d.op + "-" + i)) return;
   switch (d.op) {
     case "tab": ONGLET = d.k; CAT_OUVERTE = null; break;
-    case "addduo": PACK.duos.push({ id: idUnique("duo"), a: "", b: "", joker: { gag: "", q: "", opts: [] } }); break;
+    case "addduo": PACK.duos.push({ id: idUnique("duo"), a: "", b: "", pa: "", pb: "", joker: { gag: "", q: "", opts: [] } }); break;
     case "delduo": PACK.duos.splice(i, 1); break;
     case "moveduo": deplacer(PACK.duos, i, parseInt(d.dir, 10)); break;
     case "addm1": PACK.manche1.push(Object.assign(questionVide(), { type: "eclair", pts: 1 })); break;
@@ -5031,7 +5159,7 @@ function autotest() {
   const joue = (etape, a, data) => {
     try {
       act(a, data || {});
-      const m = texteVisible().match(/.{0,40}\b(undefined|NaN|null)\b|\[object \w+\]/);
+      const m = texteVisible().match(/.{0,40}\b(undefined|NaN|null)\b|\[object \w+\]|\{[^{}]*\/[^{}]*\}/);
       if (m) pb.push(`${etape} : « ${m[0].trim()} » à l'écran`);
       const st = document.getElementById("stage");
       if (tailleProjecteur && st.scrollHeight > st.clientHeight + 2 && !deborde.has(etape)) {
@@ -5046,6 +5174,16 @@ function autotest() {
     ["Le plat de ... ?", "Le plat de … ?"].forEach(t => {
       const h = qText(t, "Zoé");
       if ((h.match(/Zoé/g) || []).length !== 1 || /\.\.\.|…/.test(h)) pb.push(`repère du prénom : « ${t} » donne « ${h} »`);
+    });
+
+    // 0 ter. accords : la forme suit la personne ; sinon son prénom, ou les deux formes
+    [["{Il/Elle} est {prêt/prête}.", "il", "", "Il est prêt."],
+     ["{Il/Elle} est {prêt/prête}.", "elle", "", "Elle est prête."],
+     ["{Il/Elle} est {prêt/prête}.", "", "Flo", "Flo est prêt/prête."],
+     ["{Il/Elle} est {prêt/prête}.", "", "", "Il/Elle est prêt/prête."],
+     ["Aimerait-{il/elle} ? Qu'{il/elle} parte.", "", "Flo", "Aimerait-il/elle ? Qu'il/elle parte."]].forEach(([t, pr, nom, attendu]) => {
+      const obtenu = accorder(t, pr, nom);
+      if (obtenu !== attendu) pb.push(`accord : « ${t} » (${pr || "sans réglage"}${nom ? ", " + nom : ""}) donne « ${obtenu} »`);
     });
 
     // 0 bis. égalité sur la barre : seulement entre le dernier qualifié et le premier recalé
