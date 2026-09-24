@@ -140,11 +140,27 @@ l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récap
 
 ## Stockage (état actuel)
 
-Le pack et la partie en cours vivent dans le `localStorage` du navigateur, sous les clés
-`zamours-pack-v1` et `zamours-console-v4`. Ce stockage est lié au navigateur, et sous Firefox à
-l'emplacement du fichier : vider les données du navigateur, changer de PC ou déplacer le fichier
-fait perdre le pack. **Tant que la phase 2 n'est pas faite, exporter le pack en JSON après chaque
-séance de préparation** (bouton « ⬇ Exporter » de l'éditeur).
+- **Le navigateur garde la partie** dans son `localStorage`, sous trois clés :
+  - `zamours-pack-v1` : la partie préparée ;
+  - `zamours-console-v4` : la partie en cours de jeu ;
+  - `zamours-fichier-v1` : le dernier fichier ouvert ou enregistré, et si la partie a changé depuis.
+
+  Ce stockage est lié au navigateur, et sous Firefox à l'emplacement du fichier : vider les données
+  du navigateur, changer de PC ou déplacer le fichier fait perdre la partie. **Seul un fichier
+  `.json` la conserve vraiment.**
+- **« 💾 Enregistrer »** (`exporterPack()`) télécharge la partie en `.json`. Le navigateur renomme
+  chaque nouvel enregistrement « (1) », « (2) »…
+- **« 📂 Ouvrir une partie »** (`importerPack()`, ou un fichier glissé sur la page) passe par
+  `ouvrirFichier()`, qui :
+  - refuse tout JSON qui n'a pas `duos` et `manche1` ;
+  - télécharge une copie de sécurité si la partie remplacée avait des modifications jamais
+    enregistrées ;
+  - ne prend pas un fichier glissé en plein jeu.
+- **L'éditeur et l'écran récapitulatif affichent toujours** où en est l'enregistrement
+  (`etatSauvegarde()`). Fermer l'onglet sur des modifications non enregistrées déclenche l'alerte du
+  navigateur (`beforeunload`).
+- **Toute vraie modification dans l'éditeur doit appeler `marquerModifie()`**. Changer d'onglet ne
+  compte pas.
 
 ## Décisions prises (24/09/2026)
 
@@ -171,18 +187,18 @@ Ordre conseillé : l'auto-test protège chaque étape, on l'étend au fur et à 
 
    `validerPack()` exige en conséquence au moins 4 duos. Étendre l'auto-test à 4, 5 et 8 duos.
 2. ~~Repère du prénom tapable~~ — fait le 24/09/2026 : `...` vaut `…`.
-3. **Stockage hybride.**
-   - Une page ouverte en double-clic **ne peut pas lire** un JSON posé à côté d'elle : `fetch` est
-     bloqué en `file://`. On ouvre donc le JSON par un bouton ou par glisser-déposer.
-   - « Enregistrer » réécrit le même fichier via l'API File System Access (`showOpenFilePicker`,
-     `createWritable`), qui n'existe que dans Chrome et Edge. Son fonctionnement depuis `file://`
-     est **à vérifier**. Ailleurs, le téléchargement (déjà dans `exporterPack()`) sert de repli.
-   - Le `localStorage` devient un simple brouillon de secours.
+3. **Stockage hybride.** Fait le 24/09/2026, version minimale : ouvrir un `.json` (bouton ou
+   glisser-déposer), l'enregistrer en téléchargement, et toujours afficher où en est
+   l'enregistrement. Reste :
+   - **Réécrire le même fichier** au lieu d'en télécharger une copie, via l'API File System Access
+     (`showOpenFilePicker`, `createWritable`), qui n'existe que dans Chrome et Edge. Son
+     fonctionnement depuis `file://` est **à vérifier**. Ailleurs, le téléchargement actuel sert de
+     repli. Une page ouverte en double-clic ne peut pas non plus lire un JSON posé à côté d'elle :
+     `fetch` est bloqué en `file://`.
    - **Version autonome** : embarquer le pack dans un `<script type="application/json" id="pack">`,
      lu au `BOOT` avant `PACK_DEFAUT`. Pour exporter, capturer
      `document.documentElement.outerHTML` au `BOOT`, **avant le premier `render()`** : après, le
      DOM contient l'écran dessiné. Et échapper `</` en `<\/` dans le JSON embarqué.
-   - L'interface doit toujours dire où le pack est enregistré.
 4. **Manches en modules.** Proposition, rien n'est codé : un registre `MODULES`, où chaque manche
    déclare ses règles, ses écrans, ses actions, ses touches, son onglet d'éditeur et sa validation.
    Le pack porte le déroulé :

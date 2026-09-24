@@ -18,8 +18,13 @@ sauvegarder, et affiche en bas à gauche ce qui casse. À relancer après toute 
 Ouvrir Claude dans ce dossier : il lit `CLAUDE.md` (architecture, pièges, décisions prises, reste à
 faire) avant de toucher au code.
 
-Tant que le pack vit dans le navigateur, **exporter le JSON après chaque séance de préparation**
-(éditeur, bouton « ⬇ Exporter ») : vider les données du navigateur ou changer de PC le fait perdre.
+## Garder sa partie
+
+Le navigateur garde la partie en cours de préparation, mais vider ses données ou changer de PC la
+fait perdre. **Clique sur « 💾 Enregistrer » à la fin de chaque séance de préparation** : la partie
+part dans tes Téléchargements, en fichier `.json`. Pour la reprendre, « 📂 Ouvrir une partie », ou
+glisse le fichier sur la page. L'éditeur indique toujours si tes dernières modifications sont
+enregistrées.
 
 ## Dossiers
 

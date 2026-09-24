@@ -815,6 +815,22 @@
   .ed-status .ok { color: #0B8A46; font-weight: 800; }
   .ed-status .ko { color: var(--rose-dim); font-weight: 800; }
 
+  /* message passager, sur les écrans qui n'ont pas de zone prévue pour */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 90px;
+    transform: translateX(-50%);
+    z-index: 60;
+    max-width: min(720px, 90vw);
+    padding: 10px 16px;
+    background: var(--raised);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: var(--cutout-sm);
+    font-size: 14px;
+  }
+
   .ed-card {
     background: var(--raised);
     border: 3px solid var(--ink);
@@ -2370,6 +2386,53 @@ function packSauve() {
   try { return !!localStorage.getItem(PACK_KEY); } catch (e) { return false; }
 }
 
+/* --- où la partie est enregistrée ---
+   Le navigateur garde la partie, mais un navigateur se vide et un PC se
+   change : seul un fichier .json la conserve vraiment. On retient donc le
+   dernier fichier ouvert ou enregistré, et si la partie a changé depuis.
+   ponytail: « Enregistrer » télécharge une copie (le navigateur la renomme
+   « (1) », « (2) »… à chaque fois) ; réécrire le même fichier demanderait
+   l'API File System Access, propre à Chrome et Edge. */
+const FICHIER_KEY = "zamours-fichier-v1";
+let FICHIER = { nom: null, comment: null, quand: null, modifie: true };
+
+function lireFichier() {
+  try { Object.assign(FICHIER, JSON.parse(localStorage.getItem(FICHIER_KEY)) || {}); } catch (e) {}
+}
+
+function noterFichier(maj) {
+  Object.assign(FICHIER, maj);
+  try { localStorage.setItem(FICHIER_KEY, JSON.stringify(FICHIER)); } catch (e) {}
+}
+
+// appelée par l'éditeur à chaque vraie modification (pas en changeant d'onglet)
+function marquerModifie() {
+  if (!FICHIER.modifie) noterFichier({ modifie: true });
+  rafraichirSauvegarde();
+}
+
+function etatSauvegarde() {
+  if (FICHIER.modifie) {
+    return `<span class="ko">⚠ Modifications pas encore enregistrées dans un fichier.</span>
+      Clique sur « 💾 Enregistrer » pour ne rien perdre${FICHIER.nom ? ` (dernier fichier : « ${esc(FICHIER.nom)} »)` : ""}.`;
+  }
+  if (FICHIER.comment === "ouverte") return `<span class="ok">✓ Ouverte depuis « ${esc(FICHIER.nom)} »</span>, aucune modification depuis.`;
+  if (FICHIER.comment === "enregistree") {
+    const quand = new Date(FICHIER.quand).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return `<span class="ok">✓ Enregistrée</span> dans tes Téléchargements, sous « ${esc(FICHIER.nom)} » (le ${quand}).`;
+  }
+  return "Partie de départ, pas encore modifiée.";
+}
+
+function rafraichirSauvegarde() {
+  document.querySelectorAll(".etat-sauvegarde").forEach(n => n.innerHTML = etatSauvegarde());
+}
+
+// Fermer l'onglet sur des modifications jamais enregistrées : le navigateur demande confirmation.
+window.addEventListener("beforeunload", e => {
+  if (FICHIER.modifie && packSauve()) { e.preventDefault(); e.returnValue = ""; }
+});
+
 /* Remplit les champs manquants : un pack importé peut venir d'une autre
    version ou avoir été écrit à la main. */
 function normaliserPack(pk) {
@@ -3360,7 +3423,7 @@ function carteDepart(which, num, titre, texte) {
       <div class="stepnum">${num}</div>
       <h3>${titre}</h3>
       <p>${arme === "usepack-" + which
-        ? "<b>Clique encore pour remplacer la partie actuelle.</b> Exporte-la avant si tu veux la garder."
+        ? "<b>Clique encore pour remplacer la partie actuelle.</b> Enregistre-la avant si tu veux la garder."
         : texte}</p>
     </button>`;
 }
@@ -3381,8 +3444,9 @@ SCREENS.choix = {
         "Aucune question. Tu écris tout toi-même : les duos, leurs Jokers et toutes les questions.")}
       <button class="step" data-act="importpack" style="cursor:pointer;text-align:left">
         <div class="stepnum">3</div>
-        <h3>Importer une partie</h3>
-        <p>Tu as un fichier <code>.json</code>, exporté par toi ou par quelqu'un d'autre ? Charge-le directement.</p>
+        <h3>Ouvrir une partie</h3>
+        <p>Tu as un fichier <code>.json</code>, enregistré par toi ou par quelqu'un d'autre ? Ouvre-le ici,
+           ou glisse-le sur la page.</p>
       </button>
     </div>
     <div class="subline" id="packmsg"></div>`;
@@ -3411,16 +3475,24 @@ SCREENS.pack = {
       ${err.length
         ? `<div class="warn"><strong>${err.length} point${err.length > 1 ? "s" : ""} à corriger avant de jouer :</strong><br>${err.map(esc).join("<br>")}</div>`
         : `<div class="roles">Ce pack est complet et jouable.</div>`}
+      <div class="ed-status etat-sauvegarde">${etatSauvegarde()}</div>
       <div class="subline" id="packmsg"></div>`;
   },
   bottom: () => `
     <button class="btn ghost" data-act="go" data-to="title">Retour</button>
     <div class="spacer"></div>
     <button class="btn primary" data-act="openedit">✏️ Modifier le contenu</button>
-    <button class="btn ghost" data-act="exportpack" style="margin-left:10px">⬇ Exporter en JSON</button>
-    <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>
+    ${boutonsFichier()}
     <button class="btn ghost" data-act="go" data-to="choix" style="margin-left:10px">Nouvelle partie</button>`
 };
+
+// Enregistrer / Ouvrir, mêmes libellés partout où on prépare une partie
+function boutonsFichier() {
+  return `<button class="btn ghost" data-act="exportpack" style="margin-left:10px"
+      title="Télécharge la partie dans un fichier .json, à garder pour la rouvrir plus tard">💾 Enregistrer</button>
+    <button class="btn ghost" data-act="importpack" style="margin-left:10px"
+      title="Ouvre une partie enregistrée (.json) — on peut aussi glisser le fichier sur la page">📂 Ouvrir une partie</button>`;
+}
 
 SCREENS.resume3 = {
   top: () => railBase("Reprendre une partie · <strong>Manche 3</strong>"),
@@ -3933,6 +4005,8 @@ function act(a, data) {
       if (packSauve() && !confirme("usepack-" + data.which)) break;
       appliquerPack(normaliserPack(MODELES[data.which]()));
       sauverPack();
+      // point de départ fourni par le jeu : rien à perdre tant qu'on ne l'a pas modifié
+      noterFichier({ nom: null, comment: null, quand: null, modifie: false });
       S = freshState();
       nettoyerEffets();
       // sans duos, la suite logique est de les créer
@@ -4313,14 +4387,14 @@ SCREENS.edit = {
           ${esc(nom)}${n === "" ? "" : ` <span class="ed-count">${n}</span>`}</button>`).join("")}
       </div>
       <div class="ed-status" id="ed-status">${statutPackHTML()}</div>
+      <div class="ed-status etat-sauvegarde">${etatSauvegarde()}</div>
       <div class="ed-body">${(corps[ONGLET] || ongletDuos)()}</div>
     </div>`;
   },
   bottom: () => `
     <button class="btn ghost" data-act="go" data-to="title">← Écran de titre</button>
     <div class="spacer"></div>
-    <button class="btn ghost" data-act="exportpack">⬇ Exporter</button>
-    <button class="btn ghost" data-act="importpack" style="margin-left:10px">⬆ Importer</button>`
+    ${boutonsFichier()}`
 };
 
 function statutPackHTML() {
@@ -4363,6 +4437,7 @@ function brancherEditeur() {
       }
       appliquerPack(PACK);
       sauverPack();
+      marquerModifie();
       rafraichirStatut();
       if (n.type === "number") n.value = lireChemin(PACK, p);
     });
@@ -4398,6 +4473,8 @@ function actionEditeur(d) {
   }
   appliquerPack(PACK);
   sauverPack();
+  // changer d'onglet ou ouvrir une catégorie ne modifie pas la partie
+  if (!["tab", "opencat", "closecat"].includes(d.op)) marquerModifie();
   // une partie en cours peut citer le duo qu'on vient de retirer
   S = hydrate(S);
 }
@@ -4411,60 +4488,109 @@ function deplacer(arr, i, dir) {
 
 /* ---------- import / export du pack ---------- */
 
+// Message dans la zone prévue de l'écran, ou en bandeau passager s'il n'y en a pas (éditeur).
 function messagePack(txt) {
   const n = document.getElementById("packmsg");
-  if (n) n.textContent = txt;
+  if (n) { n.textContent = txt; return; }
+  document.querySelectorAll(".toast").forEach(x => x.remove());
+  const t = el(`<div class="toast" role="status">${esc(txt)}</div>`);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 7000);
+}
+
+// « Z'amours and Go » → « zamours-and-go.json », « Soirée d'été » → « soiree-dete.json »
+function nomDeFichier(pk, prefixe) {
+  const nom = (pk.meta.nom || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/['’]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return (prefixe || "") + (nom || "partie") + ".json";
+}
+
+// Télécharge la partie ; renvoie le nom du fichier, ou null si le navigateur refuse.
+function telecharger(pk, prefixe) {
+  const nom = nomDeFichier(pk, prefixe);
+  try {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(pk, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return nom;
+  } catch (e) { return null; }
 }
 
 function exporterPack() {
-  const nom = (PACK.meta.nom || "pack").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const json = JSON.stringify(PACK, null, 2);
-  try {
-    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = (nom || "pack") + ".json";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    messagePack("Fichier " + a.download + " téléchargé.");
-  } catch (e) {
-    // page cloisonnée : le téléchargement peut être bloqué, on passe par le presse-papiers
-    try {
-      navigator.clipboard.writeText(json);
-      messagePack("Téléchargement bloqué par le navigateur — le JSON a été copié dans le presse-papiers.");
-    } catch (e2) {
-      messagePack("Impossible d'exporter ici. Ouvre le fichier depuis ton disque plutôt que dans un aperçu.");
-    }
+  const nom = telecharger(PACK);
+  if (nom) {
+    noterFichier({ nom, comment: "enregistree", quand: Date.now(), modifie: false });
+    rafraichirSauvegarde();
+    messagePack(`Partie enregistrée dans tes Téléchargements, sous « ${nom} ». Garde ce fichier : c'est lui qu'on rouvre la prochaine fois.`);
+    return;
   }
+  // page cloisonnée : le téléchargement peut être bloqué, on passe par le presse-papiers
+  try {
+    navigator.clipboard.writeText(JSON.stringify(PACK, null, 2));
+    messagePack("Téléchargement bloqué par le navigateur — la partie a été copiée dans le presse-papiers.");
+  } catch (e2) {
+    messagePack("Impossible d'enregistrer ici. Ouvre le jeu depuis ton disque plutôt que dans un aperçu.");
+  }
+}
+
+function ouvrirFichier(f) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    let pk;
+    try {
+      const brut = JSON.parse(fr.result);
+      // n'importe quel JSON n'est pas une partie : sans ce contrôle, un fichier
+      // étranger remplacerait la partie actuelle par une partie vide
+      if (!brut || !Array.isArray(brut.duos) || !Array.isArray(brut.manche1)) throw new Error("pas une partie");
+      pk = normaliserPack(brut);
+    } catch (e) {
+      messagePack(`« ${f.name} » ne peut pas être ouvert : ce n'est pas une partie enregistrée par ce jeu.`);
+      return;
+    }
+    // la partie remplacée avait des modifications jamais enregistrées : on en garde une copie
+    const copie = FICHIER.modifie && packSauve() ? telecharger(PACK, "copie-avant-ouverture-") : null;
+    appliquerPack(pk);
+    sauverPack();
+    noterFichier({ nom: f.name, comment: "ouverte", quand: Date.now(), modifie: false });
+    S = freshState();
+    nettoyerEffets();
+    S.screen = "pack";
+    render();
+    const err = validerPack(pk);
+    messagePack((err.length
+        ? `Partie ouverte, mais ${err.length} point${err.length > 1 ? "s" : ""} à corriger avant de jouer.`
+        : "Partie ouverte et prête à jouer.")
+      + (copie ? ` Ta partie précédente n'était pas enregistrée : une copie a été téléchargée (« ${copie} »).` : ""));
+  };
+  fr.readAsText(f);
 }
 
 function importerPack() {
   const inp = document.createElement("input");
   inp.type = "file";
   inp.accept = "application/json,.json";
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0];
-    if (!f) return;
-    const fr = new FileReader();
-    fr.onload = () => {
-      try {
-        const pk = normaliserPack(JSON.parse(fr.result));
-        const err = validerPack(pk);
-        appliquerPack(pk);
-        sauverPack();
-        S = freshState();
-        S.screen = "pack";
-        render();
-        messagePack(err.length
-          ? `Pack importé, mais ${err.length} point${err.length > 1 ? "s" : ""} à corriger avant de jouer.`
-          : "Pack importé et prêt à jouer.");
-      } catch (e) {
-        messagePack("Fichier illisible : ce n'est pas un pack JSON valide.");
-      }
-    };
-    fr.readAsText(f);
-  };
+  inp.onchange = () => { if (inp.files && inp.files[0]) ouvrirFichier(inp.files[0]); };
   inp.click();
 }
+
+// Glisser un fichier .json sur la page l'ouvre, comme « 📂 Ouvrir une partie ».
+// Sans preventDefault, le navigateur quitterait le jeu pour afficher le fichier.
+document.addEventListener("dragover", e => {
+  if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) e.preventDefault();
+});
+document.addEventListener("drop", e => {
+  const f = e.dataTransfer && e.dataTransfer.files[0];
+  if (!f) return;
+  e.preventDefault();
+  // en plein jeu, un fichier lâché par erreur remettrait la partie à zéro
+  if (!["title", "choix", "pack", "edit"].includes(S.screen)) {
+    messagePack("Pour ouvrir une partie, reviens d'abord à l'écran titre.");
+    return;
+  }
+  ouvrirFichier(f);
+});
 
 /* ============================ AUTO-TEST ============================
    Ouvrir la page avec #autotest à la fin de l'adresse : joue une partie
@@ -4619,6 +4745,7 @@ window.addEventListener("hashchange", () => {
 if (!chargerPack()) {
   appliquerPack(normaliserPack(JSON.parse(JSON.stringify(PACK_DEFAUT))));
 }
+lireFichier();
 
 try {
   load();
