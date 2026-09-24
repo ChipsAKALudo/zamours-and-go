@@ -710,7 +710,13 @@
   .rank.picked { background: var(--rose); color: #fff; }
   .rank.picked .pos, .rank.picked .pts { color: #fff; }
   .rank.picked .pos::after { content: " ✕"; }
+  /* qualifié (reprise en Manche 2) : vert, sans la croix des éliminés */
   .rank.picked.qualif { background: #0B8A46; }
+  .rank.picked.qualif .pos::after { content: none; }
+  /* finaliste : jaune et étoile — la salle ne doit pas y lire une élimination */
+  .rank.picked.finale { background: var(--yellow); color: var(--ink); }
+  .rank.picked.finale .pos, .rank.picked.finale .pts { color: var(--ink); }
+  .rank.picked.finale .pos::after { content: " ★"; }
   .rank.tie { border-left: 10px solid var(--yellow); }
 
   /* ---------- titres criards ---------- */
@@ -1737,7 +1743,7 @@ const PACK_DEFAUT = {
     "auteur": ""
   },
   "reglages": {
-    "m2Tours": 6,
+    "m2Tours": 3,
     "m3Coeurs": 3,
     "chrono": 20
   },
@@ -2520,9 +2526,11 @@ function devineurName(d, i) { return cibleSide(d, i) === "a" ? d.b : d.a; }
 // lien soit visuel et non à deviner.
 // Trois points tapés au clavier (« ... ») valent « … » : ce caractère-là ne se
 // tape pas sur un clavier Windows.
+const REPERE = /\.\.\.|…/;
+
 function qText(t, name) {
   const marque = name ? esc(name) : "…";
-  return esc(t).split(/\.\.\.|…/).join(`<span class="ph">${marque}</span>`);
+  return esc(t).split(REPERE).join(`<span class="ph">${marque}</span>`);
 }
 
 // bandeau des rôles, affiché juste sous la question
@@ -2697,6 +2705,16 @@ function alive() { return DUOS.filter(d => !S.eliminated.includes(d.id)); }
 
 function rank(scores, pool) {
   return pool.slice().sort((x, y) => (scores[y.id] || 0) - (scores[x.id] || 0));
+}
+
+// Égalité sur la barre : le dernier qualifié et le premier recalé ont le même
+// score. Renvoie ce score, ou null. (Compter les duos au score du dernier
+// qualifié annonçait une mort subite là où tous passaient.)
+function exAequo(scores, classement, nbQualifies) {
+  const dernier = classement[nbQualifies - 1], recale = classement[nbQualifies];
+  if (!dernier || !recale) return null;
+  const s = scores[dernier.id] || 0;
+  return s === (scores[recale.id] || 0) ? s : null;
 }
 
 function el(html) {
@@ -3367,6 +3385,9 @@ SCREENS.m1 = {
     const q = M1[S.m1i];
     const isE = q.type === "eclair";
     const qcm = aDesOptions(q.opts);
+    // un QCM qui parle de quelqu'un (« … ») garde sa cible surlignée : sans
+    // elle, personne ne sait de qui parle la question
+    const cible = !qcm || REPERE.test(q.q);
     const marks = S.m1marks[S.m1i] || {};
     return `
       <div class="kicker">
@@ -3375,7 +3396,9 @@ SCREENS.m1 = {
         <span style="color:var(--muted)">${isE ? "révélation simultanée — tout le monde en même temps" : "révélation duo par duo — on étire"}</span>
       </div>
       <h1 class="question ${qCls(q.q, qcm)}"><span class="qtxt">${qText(q.q)}</span></h1>
-      ${rolesBand(null, 0, qcm)}
+      ${qcm && cible
+        ? `<div class="roles">La question parle du <span class="ph">prénom surligné</span> · les deux choisissent une lettre</div>`
+        : rolesBand(null, 0, qcm)}
       ${q.note ? `<div class="subline"><em>${esc(q.note)}</em></div>` : ""}
       ${qcm ? qcmBlock(q.opts) : ""}
       ${timerBlock()}
@@ -3385,7 +3408,7 @@ SCREENS.m1 = {
           : "le prénom souligné écrit sur l'ardoise, l'autre devine"}</span></div>
         <div class="scorerow">
           ${DUOS.map(d => `<button class="chip ${marks[d.id] ? "on" : ""}" data-act="m1mark" data-id="${d.id}">
-            <span class="mark">${marks[d.id] ? "✓" : ""}</span>${qcm ? esc(duoName(d)) : duoNameCible(d, S.m1i)}</button>`).join("")}
+            <span class="mark">${marks[d.id] ? "✓" : ""}</span>${cible ? duoNameCible(d, S.m1i) : esc(duoName(d))}</button>`).join("")}
         </div>
       </div>`;
   },
@@ -3610,13 +3633,10 @@ SCREENS.m1res = {
   stage: () => {
     const sc = scoresM1();
     const r = rank(sc, DUOS);
-    // barre = score du dernier qualifié (2 duos sortent)
-    const barre = r[r.length - 3];
-    const cut = barre ? sc[barre.id] : null;
-    const tied = r.filter(d => sc[d.id] === cut).length > 1 && cut !== null;
+    const cut = exAequo(sc, r, r.length - 2);   // 2 duos sortent
     return `
       <div class="kicker"><span class="tag">Élimination</span><span>désigne les 2 duos qui sortent</span></div>
-      ${tied ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
+      ${cut !== null ? `<div class="warn"><strong>Ex æquo sur la barre.</strong> Plusieurs duos sont à ${cut} pt${cut > 1 ? "s" : ""} — mort subite entre eux avant de trancher : une question tirée au hasard dans la banque, premier qui matche reste.</div>` : ""}
       <div class="ranks">
         ${r.map((d, i) => `<button class="rank ${S.eliminated.includes(d.id) ? "picked" : ""} ${sc[d.id] === cut ? "tie" : ""}" data-act="elim" data-id="${d.id}">
           <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id]}</span></button>`).join("")}
@@ -3751,8 +3771,23 @@ SCREENS.m2 = {
 // qui vient d'apparaître s'anime (attribuer un point ne la fait pas rejouer)
 let optJustRevealed = false;
 
+// Options du QCM à l'écran (vide s'il n'y en a pas), pour borner la touche R.
+function optsAffichees() {
+  if (S.screen === "m1") return (M1[S.m1i] || {}).opts || [];
+  if (S.screen !== "m2") return [];
+  const d = m2duo();
+  if (!d) return [];
+  if (S.m2step === 0) return jokerDe(d).opts || [];
+  const rk = d.id + "-r" + S.m2step;
+  const cat = categorieParId(S.m2cat[rk]);
+  const item = cat && cat.questions[S.m2drawn[rk]];
+  return (item && item.opts) || [];
+}
+
 function qcmBlock(opts) {
-  const shown = (S.revealCount || 0) % (opts.length + 1);
+  // R s'arrête à la dernière option (Maj+R en retire une) : un appui de trop
+  // remasquait tout, devant la salle
+  const shown = Math.min(S.revealCount || 0, opts.length);
   const pop = optJustRevealed;
   optJustRevealed = false;
   if (shown === 0) {
@@ -3785,19 +3820,18 @@ SCREENS.m2res = {
   stage: () => {
     const sc = scoresM2();
     const r = rank(sc, alive());
-    const cut = r[1] ? (sc[r[1].id] || 0) : null;
-    const tied = r.filter(d => (sc[d.id] || 0) === cut).length > 1 && cut !== null;
+    const cut = exAequo(sc, r, 2);   // 2 duos vont en finale
     return `
       <div class="kicker"><span class="tag">Finalistes</span><span>désigne les 2 duos qui passent</span></div>
-      ${tied ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
+      ${cut !== null ? `<div class="warn"><strong>Ex æquo pour la place en finale.</strong> Mort subite — et c'est le <em>Jury du Fail</em> qui arbitre si ça matche ou pas. S'ils contestent, ils buzzent au poulet. Ils tiennent la porte de la finale : c'est leur revanche.</div>` : ""}
       <div class="ranks">
-        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked" : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
+        ${r.map((d, i) => `<button class="rank ${S.finalists.includes(d.id) ? "picked finale" : ""} ${(sc[d.id] || 0) === cut ? "tie" : ""}" data-act="final" data-id="${d.id}">
           <span class="pos">${i + 1}</span><span>${esc(duoName(d))}</span><span class="pts">${sc[d.id] || 0}</span></button>`).join("")}
-      </div>
-      <div class="subline">Sur les duos désignés, la pastille marque <em>qualifié</em>, pas éliminé.</div>`;
+      </div>`;
   },
   bottom: () => `
-    <button class="btn ghost" data-act="stophere">Clore la partie ici</button>
+    <button class="btn ${arme === "stophere" ? "primary" : "ghost"}" data-act="stophere"
+      title="Termine la partie sans finale : le 1er de la Manche 2 gagne">${libelle("stophere", "Clore la partie ici")}</button>
     <div class="spacer"></div>
     <span class="eyebrow" style="margin-right:14px">${S.finalists.length}/2 qualifiés</span>
     <button class="btn primary" data-act="startm3" ${S.finalists.length !== 2 ? "disabled" : ""}>Lancer la finale<kbd>→</kbd></button>`
@@ -3823,7 +3857,7 @@ SCREENS.m3 = {
         : S.finalists.some(m3Out)
         ? (() => {
             const ko = S.finalists.filter(m3Out);
-            return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>la manche est terminée</b>, clique « Déclarer le vainqueur »</div>`;
+            return `<div class="roles fini">${ko.map(id => esc(duoName(byId(id)))).join(" et ")} n'${ko.length > 1 ? "ont" : "a"} plus de cœurs — <b>${ko.length > 1 ? "mort subite pour les départager" : "la manche est terminée"}</b></div>`;
           })()
         : `<div class="roles">Même réponse = rien ne se passe · <b>réponses différentes = un cœur en moins</b> · en cas de doute, le <b>Jury du Fail</b> tranche</div>`}
       ${timerBlock()}
@@ -3846,16 +3880,17 @@ SCREENS.m3 = {
       <div class="spacer"></div>
       <span class="eyebrow" style="margin-right:14px">Personne n'a matché ?</span>
       <button class="btn primary" data-act="m3next">Question suivante<kbd>→</kbd></button>`;
+    // Le dernier duo debout gagne : on ne déclare le vainqueur qu'une fois un
+    // duo à 0 cœur, et la mort subite ne sert que si les deux y tombent ensemble.
+    // Avant, les deux boutons étaient cliquables dès les premières questions.
     const ko = S.finalists.filter(m3Out);
-    const egalite = m3Lives(S.finalists[0]) === m3Lives(S.finalists[1]);
     return `
     ${boutonsChrono()}
     <div class="spacer"></div>
     <button class="btn ghost" data-act="m3prev" ${S.m3i === 0 ? "disabled" : ""}>Précédente<kbd>←</kbd></button>
-    <button class="btn primary" data-act="m3next" ${ko.length ? "disabled" : ""}>Question suivante<kbd>→</kbd></button>
-    ${egalite
-      ? `<button class="btn ${ko.length ? "primary" : "ghost"}" data-act="startsudden" style="margin-left:10px">☠️ Lancer la mort subite</button>`
-      : `<button class="btn ${ko.length ? "primary" : "ghost"}" data-act="finish" style="margin-left:10px">Déclarer le vainqueur</button>`}`;
+    ${ko.length === 0 ? `<button class="btn primary" data-act="m3next">Question suivante<kbd>→</kbd></button>` : ""}
+    ${ko.length === 1 ? `<button class="btn primary" data-act="finish" style="margin-left:10px">Déclarer le vainqueur</button>` : ""}
+    ${ko.length === 2 ? `<button class="btn primary" data-act="startsudden" style="margin-left:10px">☠️ Lancer la mort subite</button>` : ""}`;
   }
 };
 
@@ -4108,7 +4143,10 @@ function act(a, data) {
       else if (S.finalists.length < 2) S.finalists.push(data.id);
       break;
     }
-    case "stophere": S.finalists = []; S.screen = "end"; break;
+    case "stophere":
+      // sans retour possible depuis l'écran de fin : deux clics
+      if (!confirme("stophere")) break;
+      S.finalists = []; S.screen = "end"; break;
     case "startm3":
       S.m3marks = {}; S.m3i = 0; S.sudden = false; S.suddenWinner = null;
       resetTimer(); S.screen = "m3rules";
@@ -4148,7 +4186,15 @@ document.addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
 
   if (k === "s") { e.preventDefault(); act("panel", {}); return; }
-  if (k === "r") { e.preventDefault(); S.revealCount = (S.revealCount || 0) + 1; optJustRevealed = true; render(); return; }
+  if (k === "r") {
+    e.preventDefault();
+    const n = optsAffichees().length, avant = S.revealCount || 0;
+    S.revealCount = e.shiftKey ? Math.max(0, avant - 1) : Math.min(n, avant + 1);
+    if (S.revealCount === avant) return;               // déjà tout révélé, ou rien à masquer
+    optJustRevealed = S.revealCount > avant;
+    render();
+    return;
+  }
   if (e.code === "Space") { e.preventDefault(); startTimer(); return; }
 
   if (k === "arrowright") {
@@ -4621,6 +4667,15 @@ function autotest() {
       if ((h.match(/Zoé/g) || []).length !== 1 || /\.\.\.|…/.test(h)) pb.push(`repère du prénom : « ${t} » donne « ${h} »`);
     });
 
+    // 0 bis. égalité sur la barre : seulement entre le dernier qualifié et le premier recalé
+    const duosFictifs = [10, 8, 8, 8, 7, 2].map((s, i) => ({ id: "t" + i, s }));
+    const scFictifs = s => Object.fromEntries(duosFictifs.map((d, i) => [d.id, s[i]]));
+    [[[10, 8, 8, 8, 7, 2], 4, null], [[10, 8, 8, 7, 7, 2], 4, 7], [[9, 9, 4, 3, 0, 0], 2, null], [[9, 4, 4, 3, 0, 0], 2, 4]]
+      .forEach(([s, n, attendu]) => {
+        const obtenu = exAequo(scFictifs(s), duosFictifs, n);
+        if (obtenu !== attendu) pb.push(`ex æquo : scores ${s.join(", ")} avec ${n} qualifiés donnent ${obtenu} au lieu de ${attendu}`);
+      });
+
     // 1. un pack incomplet ne doit pas se lancer (il plantait la Manche 1)
     appliquerPack(normaliserPack(JSON.parse(JSON.stringify(PACK_VIDE))));
     S = freshState();
@@ -4646,6 +4701,19 @@ function autotest() {
       // comparé à opts.length, pas à aDesOptions() : le test ne doit pas partager le code qu'il vérifie
       const masque = !!document.querySelector("#stage .hidden-note");
       if (masque !== q.opts.length > 0) pb.push(`Manche 1, question ${i + 1} : « options masquées » ${masque ? "affiché sans QCM" : "absent sur un QCM"}`);
+      // une question qui parle de quelqu'un doit surligner une cible, QCM ou pas
+      if (/\.\.\.|…/.test(q.q) && !document.querySelector("#stage .scorerow .target"))
+        pb.push(`Manche 1, question ${i + 1} : la question parle de « … » mais aucun prénom n'est surligné`);
+      // R révèle une option à la fois et s'arrête à la dernière ; Maj+R en retire une
+      if (q.opts.length) {
+        const touche = shift => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: shift ? "R" : "r", shiftKey: shift, bubbles: true }));
+        for (let k = 0; k < q.opts.length + 2; k++) touche(false);
+        const vues = document.querySelectorAll("#stage .option").length;
+        touche(true);
+        const apres = document.querySelectorAll("#stage .option").length;
+        if (vues !== q.opts.length || apres !== q.opts.length - 1)
+          pb.push(`Manche 1, question ${i + 1} : touche R — ${vues} option(s) après ${q.opts.length + 2} appuis, ${apres} après Maj+R`);
+      }
       DUOS.forEach((d, k) => {
         if (k <= i % DUOS.length) { joue(`Manche 1, question ${i + 1}`, "m1mark", { id: d.id }); attendu[d.id] += q.pts; }
       });
@@ -4677,8 +4745,13 @@ function autotest() {
 
     // 4. finale : le premier finaliste perd tous ses cœurs
     rank(scoresM2(), alive()).slice(0, 2).forEach(d => joue("finalistes", "final", { id: d.id }));
+    if (document.querySelectorAll("#stage .rank.picked").length !== document.querySelectorAll("#stage .rank.picked.finale").length)
+      pb.push("finalistes : affichés comme des éliminés");
     joue("lancer la finale", "startm3");
     joue("finale", "go", { to: "m3" });
+    // tant que personne n'est à 0 cœur : ni vainqueur, ni mort subite
+    if (document.querySelector('#rail-bottom [data-act="finish"], #rail-bottom [data-act="startsudden"]'))
+      pb.push("finale : « Déclarer le vainqueur » ou la mort subite proposés dès la première question");
     const perdant = S.finalists[0];
     garde = 0;
     while (perdant && !m3Out(perdant) && garde++ < 100) {

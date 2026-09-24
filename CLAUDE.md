@@ -75,7 +75,7 @@ Environ 4 600 lignes. Ne pas le lire d'un bloc : repérer les sections avec
 | Animations | Révélation de question, faux départ du Joker, splash de manche, annonce de duo, sponsor, cœur brisé, victoire |
 | `SCREENS.*` | Un objet `{ top, stage, bottom }` par écran, qui renvoie du HTML |
 | `ACTIONS` | `act(action, data)` : un seul `switch`, déclenché par les attributs `data-act` des boutons |
-| `CLAVIER` | → ← Espace R S, coupés sur les écrans `edit`, `pack` et `choix` |
+| `CLAVIER` | → ← Espace R S, coupés sur les écrans `edit`, `pack` et `choix`. R révèle l'option suivante d'un QCM et s'arrête à la dernière, Maj+R en retire une (`optsAffichees()`) |
 | `ÉDITEUR DE PACK` | Onglets, écriture des champs, actions de structure, import et export JSON |
 | `AUTO-TEST`, `BOOT` | `autotest()`, puis le chargement : pack d'abord, état de partie ensuite |
 
@@ -121,6 +121,13 @@ l'éditeur, sur l'onglet des duos. À côté : `edit` (éditeur), `pack` (récap
 - **Un texte qui cite les réglages du pack se calcule à l'affichage**, jamais au chargement du
   script : le pack n'est appliqué qu'au `BOOT` et change dans l'éditeur. Voir `regles()`, qui
   affichait `undefined` quand c'était une constante.
+- **Une égalité se juge avec `exAequo()`**, entre le dernier qualifié et le premier recalé. Compter
+  les duos au score du dernier qualifié annonçait une mort subite là où tout le monde passait.
+- **L'écran projeté ne ment pas à la salle** :
+  - les finalistes sont en jaune avec une ★ (classe `finale`), pas avec la croix rouge des éliminés ;
+  - en finale, « Déclarer le vainqueur » n'apparaît qu'avec un duo à 0 cœur, et la mort subite
+    qu'avec les deux ;
+  - une action sans retour (Reset, « Clore la partie ici ») se confirme en deux clics.
 - **Toute contrainte de jouabilité va dans `validerPack()`**. `jouable()` s'en sert pour bloquer
   « Commencer » et les reprises, et l'éditeur l'affiche dans son bandeau.
 - **Éditeur : aucun re-rendu pendant la frappe**, sinon le curseur saute. Le texte s'écrit dans le
